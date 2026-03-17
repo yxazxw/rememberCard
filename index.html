@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<title>复习提醒系统（V7 卡片专注版）</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{overflow-x:hidden}
+  body{font-family:"Microsoft YaHei",Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px;overflow-x:hidden}
+  .container{max-width:1000px;width:100%;margin:0 auto;background:#fff;border-radius:15px;box-shadow:0 20px 40px rgba(0,0,0,.1);overflow:hidden}
+
+  /* Header */
+  .header{
+    background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);
+    color:#fff;
+    padding:30px;
+    text-align:center;
+    position:relative; 
+  }
+  .header h1{font-size:2.2em;font-weight:300;margin-bottom:10px}
+  .header p{opacity:.9;font-size:1.1em}
+
+  /* 铃铛提醒 */
+  .bell-reminder{
+    position:absolute;
+    top:20px;
+    left:20px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:rgba(255,255,255,0.2);
+    backdrop-filter:blur(10px);
+    padding:8px 16px;
+    border-radius:30px;
+    border:1px solid rgba(255,255,255,0.3);
+    cursor:pointer;
+    transition:all .3s;
+    text-decoration:none;
+    color:#fff;
+  }
+  .bell-reminder:hover{
+    background:rgba(255,255,255,0.3);
+    transform:translateY(-2px);
+    box-shadow:0 4px 12px rgba(0,0,0,0.1);
+  }
+  .bell-icon{
+    font-size:24px;
+    position:relative;
+    animation:swing 2s ease-in-out infinite;
+    transform-origin:top center;
+  }
+  @keyframes swing{
+    0%,100%{transform:rotate(0deg)}
+    10%,30%{transform:rotate(10deg)}
+    20%,40%{transform:rotate(-10deg)}
+    50%{transform:rotate(0deg)}
+  }
+  .bell-count{
+    background:#ffd700;
+    color:#333;
+    font-weight:bold;
+    font-size:14px;
+    min-width:24px;
+    height:24px;
+    border-radius:12px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 6px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.2);
+    border:2px solid #fff;
+  }
+  .bell-count.zero{
+    background:#90EE90;
+    color:#2d5016;
+  }
+  .bell-count.urgent{
+    background:#ff4444;
+    color:#fff;
+    animation:pulse 1.5s infinite;
+  }
+  @keyframes pulse{
+    0%,100%{transform:scale(1)}
+    50%{transform:scale(1.1)}
+  }
+  .bell-text{
+    font-size:13px;
+    font-weight:500;
+    opacity:0.95;
+  }
+
+  .main-content{padding:30px;width:100%;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column}
+  .add-section{background:#f8f9fa;border:1px solid #e9ecef;border-left:5px solid #4facfe;border-radius:10px;padding:20px;margin-bottom:30px;width:100%;box-sizing:border-box}
+  .form-group{margin-bottom:20px}
+  .form-group label{display:block;margin-bottom:8px;font-weight:600;color:#495057}
+  .form-group input{width:100%;padding:12px 15px;border:2px solid #e9ecef;border-radius:8px;font-size:16px;transition:border-color .3s}
+  .form-group input:focus{outline:none;border-color:#4facfe}
+
+  /* 富文本编辑器 */
+  .rich-editor{border:2px solid #e9ecef;border-radius:8px;overflow:hidden;transition:border-color .3s;background:#fff;max-width:100%}
+  .rich-editor:focus-within{border-color:#4facfe}
+  .editor-toolbar{background:#f8f9fa;padding:10px;border-bottom:1px solid #e9ecef;display:flex;gap:8px;flex-wrap:wrap;align-items:center;max-width:100%;box-sizing:border-box}
+  .editor-toolbar button{width:36px;height:36px;border:1px solid #dee2e6;background:#fff;cursor:pointer;border-radius:6px;font-size:14px;transition:all .2s;display:flex;align-items:center;justify-content:center;color:#495057}
+  .editor-toolbar button:hover{background:#e9ecef;border-color:#ced4da;transform:translateY(-1px)}
+  .editor-toolbar button.active{background:#4facfe;color:#fff;border-color:#4facfe}
+  .toolbar-divider{width:1px;height:24px;background:#dee2e6;margin:0 4px}
+  .color-picker{display:flex;gap:4px;align-items:center;padding:2px;background:#fff;border:1px solid #dee2e6;border-radius:6px}
+  .color-btn{width:22px;height:22px;border:2px solid transparent;border-radius:4px;cursor:pointer;transition:all .2s}
+  .color-btn:hover{transform:scale(1.1);border-color:#333;z-index:10}
+  .color-btn.active{border-color:#333;box-shadow:0 0 0 2px #fff,0 0 0 4px #4facfe}
+  .color-btn[data-color="#ffffff"]{border:1px solid #dee2e6}
+  .editor-content{padding:12px 15px;min-height:240px;max-height:420px;overflow-y:auto;outline:none;font-size:16px;line-height:1.6}
+  .editor-content:empty:before{content:attr(placeholder);color:#adb5bd}
+
+  .btn{background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);color:#fff;border:none;padding:12px 25px;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:transform .2s;flex-shrink:0}
+  .btn:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(79,172,254,.4)}
+  .btn-small{padding:8px 16px;font-size:14px;flex-shrink:0}
+  .btn-danger{background:linear-gradient(135deg,#ff6b6b 0%,#ff8e8e 100%)}
+  .btn-success{background:linear-gradient(135deg,#51cf66 0%,#8ce99a 100%)}
+  .btn-warning{background:linear-gradient(135deg,#ffa502 0%,#ffc107 100%)}
+  /* 复习评分按钮 */
+  .rating-btns{display:flex;gap:6px;flex-wrap:wrap;flex:1 1 auto;min-width:0}
+  .rating-btn{padding:6px 12px;font-size:13px;border:none;border-radius:6px;cursor:pointer;transition:all .2s;font-weight:500;flex-shrink:1;min-width:0}
+  .rating-btn:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.15)}
+  .rating-btn.forget{background:linear-gradient(135deg,#ff6b6b,#ee5a5a);color:#fff}
+  .rating-btn.hard{background:linear-gradient(135deg,#ffa940,#fa8c16);color:#fff}
+  .rating-btn.good{background:linear-gradient(135deg,#52c41a,#73d13d);color:#fff}
+  .rating-btn.easy{background:linear-gradient(135deg,#1890ff,#40a9ff);color:#fff}
+  .dynamic-badge{display:inline-block;background:linear-gradient(135deg,#722ed1,#9254de);color:#fff;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:middle}
+  .ease-info{font-size:12px;color:#8c8c8c;margin-top:4px}
+
+  /* 保存状态指示器 */
+  .save-indicator{position:fixed;top:20px;right:20px;padding:8px 16px;background:rgba(255,255,255,0.95);border-radius:20px;box-shadow:0 2px 10px rgba(0,0,0,0.1);font-size:14px;display:flex;align-items:center;gap:8px;z-index:9999;transition:all .3s}
+  .save-indicator.saving{color:#ffa502}
+  .save-indicator.saved{color:#51cf66}
+  .save-indicator.error{color:#ff6b6b}
+  .save-dot{width:8px;height:8px;border-radius:50%;background:currentColor;animation:savePulse 1.5s infinite}
+  .save-indicator.saved .save-dot{animation:none}
+  @keyframes savePulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  .review-sections{display:grid;gap:20px;width:100%;box-sizing:border-box;grid-template-columns:minmax(0,1fr)}
+  .section-title{color:#343a40;font-size:1.5em;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid #e9ecef;scroll-margin-top:100px;overflow-wrap:break-word;word-break:break-word}
+  
+  /* ========== 复习项目卡片样式 ========== */
+  .review-item{background:#fff;border:1px solid #e9ecef;border-radius:10px;padding:20px;margin-bottom:15px;box-shadow:0 2px 10px rgba(0,0,0,.05);transition:all .3s;width:100%;max-width:100%;overflow-wrap:break-word;word-break:break-word;box-sizing:border-box}
+  .review-item:hover{transform:translateY(-3px);box-shadow:0 8px 25px rgba(0,0,0,.1)}
+  .review-item.urgent{border-left:5px solid #ff6b6b;background:linear-gradient(90deg,#fff5f5 0%,#fff 10%)}
+  .review-item.due-soon{border-left:5px solid #ffa500;background:linear-gradient(90deg,#fff8e1 0%,#fff 10%)}
+  .review-item.future{border-left:5px solid #51cf66;background:linear-gradient(90deg,#f0fff4 0%,#fff 10%)}
+  /* 卡片视图下移除圆角和上边框，保留左边框颜色 */
+  .review-item.card-view-item.urgent{border-left:5px solid #ff6b6b}
+  .review-item.card-view-item.due-soon{border-left:5px solid #ffa500}
+  .review-item.card-view-item.future{border-left:5px solid #51cf66}
+  .review-item.editing{border:2px solid #4facfe;box-shadow:0 0 0 4px rgba(79,172,254,.1)}
+
+  /* ========== 新增：卡片模式样式 ========== */
+  .card-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f1f3f5;
+    padding: 10px 20px;
+    border-radius: 10px 0 0 0;
+    border: 1px solid #e9ecef;
+    border-bottom: none;
+    margin-bottom: 0;
+    width: 100%;
+    box-sizing: border-box;
+    border-left-width: 5px;
+    border-left-style: solid;
+    border-left-color: #dee2e6;
+  }
+  .card-controls.urgent { border-left-color: #ff6b6b; }
+  .card-controls.due-soon { border-left-color: #ffa500; }
+  .card-controls.future { border-left-color: #51cf66; }
+  .nav-btn {
+    background: #fff;
+    border: 1px solid #dee2e6;
+    color: #495057;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    font-size: 18px;
+    user-select: none;
+  }
+  .nav-btn:hover:not(:disabled) {
+    background: #4facfe;
+    color: #fff;
+    border-color: #4facfe;
+    transform: scale(1.1);
+  }
+  .nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    background: #e9ecef;
+  }
+  .page-indicator {
+    font-weight: 600;
+    color: #495057;
+    font-feature-settings: "tnum"; /* 等宽数字 */
+  }
+  /* 卡片视图下的项目样式修正 */
+  .card-view-item {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-top: 1px solid #e9ecef;
+    margin-bottom: 0;
+    animation: fadeEffect 0.3s;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  @keyframes fadeEffect {
+    from {opacity: 0; transform: translateY(5px);}
+    to {opacity: 1; transform: translateY(0);}
+  }
+
+  .item-header{display:block;margin-bottom:15px;width:100%;box-sizing:border-box;overflow:hidden}
+  .item-header>div{width:100%;box-sizing:border-box}
+  .item-title{font-size:1.2em;font-weight:600;color:#343a40;margin-bottom:5px;overflow-wrap:break-word;word-break:break-word;width:100%}
+  .item-dates{font-size:.9em;color:#6c757d;width:100%;overflow-wrap:break-word;word-break:break-word}
+  .item-content{color:#495057;line-height:1.6;margin-bottom:15px;background:#f8f9fa;padding:15px;border-radius:6px;white-space:normal;overflow-wrap:break-word;word-break:break-word;max-height:30em;overflow-y:auto;overflow-x:auto;width:100%;box-sizing:border-box}
+
+  /* 完形填空遮挡样式 */
+  .cloze{display:inline-block;background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);color:#fff;padding:2px 12px;border-radius:4px;cursor:pointer;font-weight:500;min-width:60px;text-align:center;transition:all .2s;user-select:none;vertical-align:middle;margin:0 2px}
+  .cloze:hover{transform:scale(1.02);box-shadow:0 2px 8px rgba(79,172,254,0.4)}
+  .cloze.revealed{background:transparent;color:inherit;padding:0;cursor:default}
+  .cloze.revealed:hover{transform:none;box-shadow:none}
+
+  /* 编辑模式下的遮挡块样式 */
+  .cloze-edit{display:inline;background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);color:#fff;padding:1px 6px;border-radius:3px;font-weight:500;cursor:text}
+  .cloze-edit:focus{outline:2px solid #4facfe;outline-offset:1px}
+  .item-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;width:100%;box-sizing:border-box}
+  .review-cycle{display:flex;gap:5px;margin-top:10px;flex-wrap:wrap}
+  .cycle-dot{width:12px;height:12px;border-radius:50%;background:#e9ecef;flex-shrink:0}
+  .cycle-dot.completed{background:#51cf66}
+  .cycle-dot.current{background:#ffa500}
+  
+  .stats{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:20px;border-radius:10px;margin-bottom:30px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,0.2);border-left:5px solid rgba(255,255,255,0.5)}
+  .stat-item{text-align:center}
+  .stat-number{font-size:2em;font-weight:700;margin-bottom:5px}
+  .stat-label{opacity:.9}
+  .empty-state{text-align:center;color:#6c757d;padding:40px}
+
+  /* 编辑模式 */
+  .edit-input{width:100%;padding:10px;margin-bottom:10px;border:2px solid #4facfe;border-radius:6px;font-size:16px;box-sizing:border-box}
+  .edit-rich-editor{border:2px solid #4facfe;border-radius:6px;overflow:hidden;margin-bottom:10px;background:#fff;max-width:100%;box-sizing:border-box}
+  .edit-rich-editor .editor-toolbar{background:#e7f3ff;padding:8px}
+  .edit-rich-editor .editor-content{padding:10px;min-height:100px;font-size:15px;overflow-wrap:break-word;word-break:break-word}
+  .edit-actions{display:flex;gap:10px;justify-content:flex-end}
+  .btn-cancel{background:#6c757d}
+
+  /* 数据安全提示 */
+  .backup-notice{background:linear-gradient(135deg,#fff3cd 0%,#ffeeba 100%);border:1px solid #ffc107;border-radius:8px;padding:15px;margin-bottom:20px;font-size:.9em;color:#856404}
+  .backup-notice strong{display:block;margin-bottom:5px}
+  .path-hint{font-size:12px;color:#6c757d;margin-top:5px;font-style:italic}
+
+  html{scroll-behavior:smooth}
+
+  @media(max-width:768px){
+    .bell-reminder{top:10px;left:10px;padding:6px 12px}
+    .bell-text{display:none} 
+    .header h1{font-size:1.8em}
+    .item-header{width:100%}
+    .item-actions{justify-content:flex-start}
+    .stats{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+<base target="_blank">
+</head>
+<body>
+  <div id="saveIndicator" class="save-indicator saved" style="display:none;">
+    <span class="save-dot"></span>
+    <span id="saveText">已保存</span>
+  </div>
+
+  <div class="container">
+    <div class="header">
+      <a href="#today-review-anchor" class="bell-reminder" id="bellReminder" title="点击查看今日复习">
+        <span class="bell-icon">🔔</span>
+        <span class="bell-count" id="bellCount">0</span>
+        <span class="bell-text">待复习</span>
+      </a>
+
+      <h1>复习提醒系统</h1>
+      <p>基于科学记忆曲线的智能复习安排（防数据丢失增强版+目录记忆）</p>
+    </div>
+
+    <div class="main-content">
+      <div class="backup-notice">
+        <strong>💾 数据保护机制已启用</strong>
+        • 编辑后不自动保存（需手动） • 关闭页面前自动备份 • 支持手动导出 • 每60分钟定期保存<br>
+        <small>建议定期使用"导出备份"功能保存到本地文件，以防浏览器数据被清除</small>
+        <div style="margin-top:5px;font-size:0.9em;">
+          <strong>🔔 铃铛提醒：</strong>左上角铃铛显示今日待复习数量，点击可快速跳转到复习列表
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat-item"><div class="stat-number" id="totalItems">0</div><div class="stat-label">总学习项目</div></div>
+        <div class="stat-item"><div class="stat-number" id="dueToday">0</div><div class="stat-label">今日待复习</div></div>
+        <div class="stat-item"><div class="stat-number" id="completedToday">0</div><div class="stat-label">今日已完成</div></div>
+        <div class="stat-item"><div class="stat-number" id="streakDays">0</div><div class="stat-label">连续学习天数</div></div>
+      </div>
+
+      <div class="add-section">
+        <h3 style="margin-bottom:20px;color:#495057">📚 添加新的学习内容</h3>
+        <form id="addForm">
+          <div class="form-group">
+            <label for="title">标题</label>
+            <input type="text" id="title" placeholder="例如：知识点 - C++相关" required/>
+          </div>
+
+          <div class="form-group">
+            <label>学习内容</label>
+            <div class="rich-editor">
+              <div class="editor-toolbar">
+                <button type="button" onclick="formatDoc('bold')" title="加粗"><b>B</b></button>
+                <button type="button" onclick="formatDoc('italic')" title="斜体"><i>I</i></button>
+                <button type="button" onclick="formatDoc('underline')" title="下划线"><u>U</u></button>
+                <button type="button" onclick="formatDoc('strikeThrough')" title="删除线"><s>S</s></button>
+                <div class="toolbar-divider"></div>
+                <button type="button" onclick="formatDoc('insertUnorderedList')" title="无序列表">• 列表</button>
+                <button type="button" onclick="formatDoc('insertOrderedList')" title="有序列表">1. 列表</button>
+                <div class="toolbar-divider"></div>
+
+                <div class="color-picker" title="文字颜色">
+                  <button type="button" class="color-btn" style="background:#ff0000" onclick="formatDoc('foreColor', '#ff0000')" title="红色"></button>
+                  <button type="button" class="color-btn" style="background:#ffa500" onclick="formatDoc('foreColor', '#ffa500')" title="橙色"></button>
+                  <button type="button" class="color-btn" style="background:#ffff00" onclick="formatDoc('foreColor', '#ffff00')" title="黄色"></button>
+                  <button type="button" class="color-btn" style="background:#008000" onclick="formatDoc('foreColor', '#008000')" title="绿色"></button>
+                  <button type="button" class="color-btn" style="background:#00ffff" onclick="formatDoc('foreColor', '#00ffff')" title="青色"></button>
+                  <button type="button" class="color-btn" style="background:#0000ff" onclick="formatDoc('foreColor', '#0000ff')" title="蓝色"></button>
+                  <button type="button" class="color-btn" style="background:#800080" onclick="formatDoc('foreColor', '#800080')" title="紫色"></button>
+                  <button type="button" class="color-btn" style="background:#000000" onclick="formatDoc('foreColor', '#000000')" title="黑色"></button>
+                  <button type="button" class="color-btn" style="background:#ffffff" onclick="formatDoc('foreColor', '#ffffff')" title="白色"></button>
+                </div>
+                <div class="toolbar-divider"></div>
+                <button type="button" onclick="formatDoc('removeFormat')" title="清除格式">🧹</button>
+                <button type="button" onclick="removeCloze()" title="清除遮挡">🔓</button>
+                <div class="toolbar-divider"></div>
+                <button type="button" onclick="addCloze()" title="添加遮挡 (选中文字后点击)">🔒 遮挡</button>
+              </div>
+              <div id="content" class="editor-content" contenteditable="true" placeholder="详细的学习内容...支持富文本格式和颜色，使用 {{c1::内容}} 添加遮挡"></div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn">添加到复习计划</button>
+        </form>
+
+        <div style="margin-top:25px;padding-top:25px;border-top:1px solid #dee2e6">
+          <h4 style="margin-bottom:15px;color:#495057">💾 数据管理</h4>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-small" onclick="reviewSystem.exportData()">📤 导出备份</button>
+            <button class="btn btn-small" onclick="reviewSystem.importData()">📥 导入备份（已修复）</button>
+            <button class="btn btn-small" onclick="reviewSystem.backupToLocalStorage()" title="双重备份到本地存储">🛡️ 紧急备份</button>
+            <button class="btn btn-small btn-danger" onclick="reviewSystem.clearAllData()">🗑️ 清空所有数据</button>
+          </div>
+          <div id="lastPathHint" class="path-hint" style="display:none;"></div>
+          <input type="file" id="importFile" accept=".json" style="display:none"/>
+          <p style="margin-top:10px;font-size:.9em;color:#6c757d">
+            <strong>数据安全提示：</strong><br/>
+            • 本应用使用 IndexedDB + LocalStorage 双重存储保护<br/>
+            • 关闭页面前自动备份，编辑内容需点击保存<br/>
+            • 建议定期"导出备份"到本地文件以防浏览器数据被清除
+          </p>
+        </div>
+      </div>
+
+      <div id="today-review-anchor" style="position:relative;top:-20px;"></div>
+
+      <div class="review-sections">
+        <div class="urgent-section">
+          <h2 class="section-title">🚨 紧急复习 (已过期)</h2>
+          <div id="urgentItems"></div>
+        </div>
+
+        <div class="today-section">
+          <h2 class="section-title" id="todaySectionTitle">📅 今日复习</h2>
+          <div id="todayItems"></div>
+        </div>
+
+        <div class="upcoming-section">
+          <h2 class="section-title">⏰ 即将到期 (3天内)</h2>
+          <div id="upcomingItems"></div>
+        </div>
+
+        <div class="future-section">
+          <h2 class="section-title">📋 未来安排</h2>
+          <div id="futureItems"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+/* ========== IndexedDB 工具 ========== */
+class IndexedDBStorage {
+  constructor(dbName = 'EbbinghausDB', storeName = 'reviewItems') {
+    this.dbName = dbName;
+    this.storeName = storeName;
+    this.db = null;
+  }
+  async init() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(this.dbName, 6);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => { this.db = request.result; resolve(); };
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(this.storeName)) {
+          db.createObjectStore(this.storeName, { keyPath: 'key' });
+        }
+      };
+    });
+  }
+  async setItem(key, value) {
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(this.storeName, 'readwrite');
+      const store = tx.objectStore(this.storeName);
+      const request = store.put({ key, value });
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+  async getItem(key) {
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(this.storeName, 'readonly');
+      const store = tx.objectStore(this.storeName);
+      const req = store.get(key);
+      req.onsuccess = () => resolve(req.result?.value || null);
+      req.onerror = () => reject(req.error);
+    });
+  }
+}
+
+/* ========== 全局富文本编辑工具函数 ========== */
+function formatDoc(cmd, value = null) {
+  document.execCommand(cmd, false, value);
+  const editor = document.getElementById('content');
+  if (editor) editor.focus();
+}
+
+// 添加遮挡语法（主编辑器）- 使用可视化遮挡块
+function addCloze() {
+  const selection = window.getSelection();
+  if (selection.rangeCount > 0 && selection.toString().trim()) {
+    const range = selection.getRangeAt(0);
+    // 获取选中内容的 HTML（保留格式）
+    const fragment = range.extractContents();
+    const tempDiv = document.createElement('div');
+    tempDiv.appendChild(fragment);
+    const selectedHTML = tempDiv.innerHTML;
+
+    // 创建可视化遮挡块（与编辑模式一致）
+    const span = document.createElement('span');
+    span.className = 'cloze-edit';
+    span.setAttribute('data-cloze-num', '1');
+    span.innerHTML = selectedHTML;
+    range.insertNode(span);
+    // 将光标移到插入内容后面
+    range.setStartAfter(span);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  } else {
+    alert('请先选中要遮挡的文字');
+  }
+}
+
+// 清除遮挡（主编辑器）
+function removeCloze() {
+  const selection = window.getSelection();
+  if (selection.rangeCount > 0) {
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer;
+    // 查找选中范围内的所有遮挡块
+    const clozeBlocks = container.nodeType === 3
+      ? []
+      : container.querySelectorAll('.cloze-edit');
+
+    clozeBlocks.forEach(block => {
+      // 将遮挡块替换为纯文本内容
+      block.replaceWith(...block.childNodes);
+    });
+
+    if (clozeBlocks.length === 0) {
+      // 如果没有找到遮挡块，尝试查找包含光标的遮挡块
+      let parent = container.nodeType === 3 ? container.parentElement : container;
+      while (parent && !parent.classList?.contains('cloze-edit')) {
+        parent = parent.parentElement;
+      }
+      if (parent && parent.classList?.contains('cloze-edit')) {
+        parent.replaceWith(...parent.childNodes);
+      }
+    }
+  }
+}
+
+// 添加遮挡语法（编辑模式）- 创建可视化遮挡块
+function addEditCloze(itemId) {
+  const selection = window.getSelection();
+  if (selection.rangeCount > 0 && selection.toString().trim()) {
+    const range = selection.getRangeAt(0);
+    // 获取选中内容的 HTML（保留格式）
+    const fragment = range.extractContents();
+    const tempDiv = document.createElement('div');
+    tempDiv.appendChild(fragment);
+    const selectedHTML = tempDiv.innerHTML;
+
+    // 创建可视化遮挡块（不设置 contenteditable，继承父元素）
+    const span = document.createElement('span');
+    span.className = 'cloze-edit';
+    span.setAttribute('data-cloze-num', '1');
+    span.innerHTML = selectedHTML;
+    range.insertNode(span);
+    range.setStartAfter(span);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+  } else {
+    alert('请先选中要遮挡的文字');
+  }
+}
+
+// 清除遮挡（编辑模式）
+function removeEditCloze(itemId) {
+  removeCloze(); // 复用主编辑器逻辑
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.classList.contains('editor-content')) {
+    if (e.ctrlKey || e.metaKey) {
+      switch(e.key.toLowerCase()) {
+        case 'b': e.preventDefault(); formatDoc('bold'); break;
+        case 'i': e.preventDefault(); formatDoc('italic'); break;
+        case 'u': e.preventDefault(); formatDoc('underline'); break;
+      }
+    }
+  }
+});
+
+/* ========== 主应用 ========== */
+class EbbinghausReviewSystem {
+  constructor() {
+    this.reviewIntervals = [1, 2, 4, 7, 15, 30, 60];
+    this.storage = new IndexedDBStorage();
+    this.editingId = null;
+    this.hasUnsavedChanges = false;
+    this.saveDebounceTimer = null;
+    this.isSaving = false;
+    this.lastDirectoryHandle = null;
+    
+    // ========== 新增：卡片浏览状态 ==========
+    // 记录每个区域当前显示的索引 { urgentItems: 0, todayItems: 2, ... }
+    this.slideState = {}; 
+  }
+
+  async init() {
+    await this.storage.init();
+    await this.loadDataWithFallback();
+    this.loadLastDirectory();
+    this.initEventListeners();
+    this.initAutoSave();
+    this.render();
+    this.updateStats();
+    this.updateBellReminder(); 
+
+    setInterval(async () => {
+      if (this.hasUnsavedChanges) await this.saveData();
+    }, 60 * 60 * 1000);
+  }
+
+  updateBellReminder() {
+    const c = this.categorizeItems();
+    const count = c.urgent.length + c.today.length;
+    const bellCount = document.getElementById('bellCount');
+    const bellText = document.querySelector('.bell-text');
+
+    if (bellCount) {
+      bellCount.textContent = count;
+      bellCount.className = 'bell-count';
+
+      if (count === 0) {
+        bellCount.classList.add('zero');
+        if (bellText) bellText.textContent = '已完成';
+      } else if (c.urgent.length > 0) {
+        bellCount.classList.add('urgent');
+        if (bellText) bellText.textContent = '紧急复习';
+      } else {
+        if (bellText) bellText.textContent = '待复习';
+      }
+    }
+
+    const todaySectionTitle = document.getElementById('todaySectionTitle');
+    if (todaySectionTitle) {
+      if (c.today.length > 0 || c.urgent.length > 0) {
+        todaySectionTitle.style.color = '#ff6b6b';
+        todaySectionTitle.innerHTML = '📅 今日复习 <span style="font-size:0.6em;background:#ffd700;color:#333;padding:2px 8px;border-radius:10px;">' + count + '个待办</span>';
+      } else {
+        todaySectionTitle.style.color = '';
+        todaySectionTitle.innerHTML = '📅 今日复习';
+      }
+    }
+  }
+
+  async loadLastDirectory() {
+    try {
+      const handle = await this.storage.getItem('lastDirectoryHandle');
+      if (handle) {
+        const permission = await handle.queryPermission({ mode: 'readwrite' });
+        if (permission === 'granted' || permission === 'prompt') {
+          this.lastDirectoryHandle = handle;
+          this.showPathHint('已记忆上次使用的文件夹');
+        }
+      }
+    } catch (e) {
+      console.log('无法恢复上次目录:', e);
+    }
+  }
+
+  showPathHint(text) {
+    const hint = document.getElementById('lastPathHint');
+    if (hint) {
+      hint.textContent = `📁 ${text}`;
+      hint.style.display = 'block';
+    }
+  }
+
+  async loadDataWithFallback() {
+    try {
+      let data = await this.storage.getItem('reviewItems');
+      if (!data || data.length === 0) {
+        const backup = localStorage.getItem('reviewItems_backup');
+        if (backup) {
+          data = JSON.parse(backup);
+          await this.storage.setItem('reviewItems', data);
+        }
+      }
+      if (!data) data = [];
+      this.reviewItems = data.map(item => ({
+        ...item,
+        createdAt: new Date(item.createdAt),
+        nextReview: new Date(item.nextReview),
+        completedReviews: (item.completedReviews || []).map(d => new Date(d))
+      }));
+    } catch (e) {
+      console.error('数据加载失败:', e);
+      this.reviewItems = [];
+    }
+  }
+
+  showSaveStatus(status, message) {
+    const indicator = document.getElementById('saveIndicator');
+    const text = document.getElementById('saveText');
+    indicator.style.display = 'flex';
+    indicator.className = 'save-indicator ' + status;
+    text.textContent = message;
+    if (status === 'saved') {
+      setTimeout(() => { indicator.style.display = 'none'; }, 2000);
+    }
+  }
+
+  // ========== 修改：增加 showGui 参数，支持静默保存 ==========
+  async saveData(showGui = true) {
+    if (this.isSaving) return;
+    this.isSaving = true;
+    
+    if (showGui) this.showSaveStatus('saving', '正在保存...');
+    
+    try {
+      await this.storage.setItem('reviewItems', this.reviewItems);
+      this.backupToLocalStorage();
+      this.hasUnsavedChanges = false;
+      
+      if (showGui) {
+        this.showSaveStatus('saved', '已保存');
+      } else {
+        // 静默保存成功后，隐藏之前的"有未保存内容"提示
+        const indicator = document.getElementById('saveIndicator');
+        if (indicator) indicator.style.display = 'none';
+      }
+      return true;
+    } catch (e) {
+      console.error('保存失败:', e);
+      this.showSaveStatus('error', '保存失败');
+      this.backupToLocalStorage();
+      return false;
+    } finally {
+      this.isSaving = false;
+    }
+  }
+
+  backupToLocalStorage() {
+    try {
+      const data = JSON.stringify(this.reviewItems);
+      localStorage.setItem('reviewItems_backup', data);
+      localStorage.setItem('reviewItems_backup_time', new Date().toISOString());
+    } catch (e) {
+      console.error('LocalStorage备份失败:', e);
+    }
+  }
+
+  initAutoSave() {
+    window.addEventListener('beforeunload', (e) => {
+      if (this.hasUnsavedChanges) {
+        this.saveData();
+        this.backupToLocalStorage();
+      }
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && this.hasUnsavedChanges) this.saveData();
+    });
+    // 注意：主添加框的自动保存逻辑保持不变，依然自动保存（添加新卡片时）
+    const editor = document.getElementById('content');
+    if (editor) {
+      const observer = new MutationObserver(() => { this.triggerAutoSave(); });
+      observer.observe(editor, { childList: true, subtree: true, characterData: true });
+    }
+  }
+
+  triggerAutoSave() {
+    this.hasUnsavedChanges = true;
+    this.showSaveStatus('saving', '编辑中...');
+    clearTimeout(this.saveDebounceTimer);
+    this.saveDebounceTimer = setTimeout(() => { this.saveData(); }, 1000);
+  }
+
+  initEventListeners() {
+    document.getElementById('addForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      await this.addItem();
+    });
+    document.addEventListener('keydown', async e => {
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault();
+        await this.saveData();
+        this.showNotification('💾 已手动保存');
+      }
+    });
+    document.getElementById('importFile').addEventListener('change', e => this.handleFileImport(e));
+  }
+
+  async addItem() {
+    const title = document.getElementById('title').value.trim();
+    // 将可视化遮挡��转换回 {{c1::内容}} 语法后再保存
+    const content = this.editFormatToCloze(document.getElementById('content').innerHTML.trim());
+    if (!title || !content || content === '<br>') return alert('请填写完整！');
+
+    const item = {
+      id: Date.now(),
+      title,
+      content,
+      createdAt: new Date(),
+      currentInterval: 0,
+      reviewCount: 0,
+      nextReview: new Date(Date.now() + this.reviewIntervals[0] * 24 * 60 * 60 * 1000),
+      completedReviews: [],
+      easeFactor: 2.5,        // 难度系数（动态间隔用）
+      lastIntervalDays: 0     // 上次间隔天数（动态间隔用）
+    };
+    this.reviewItems.push(item);
+    this.hasUnsavedChanges = true;
+    await this.saveData();
+    this.render();
+    this.updateStats();
+    this.updateBellReminder(); 
+    document.getElementById('title').value = '';
+    document.getElementById('content').innerHTML = '';
+    this.showNotification('✅ 已添加并保存');
+  }
+
+  async exportData() {
+    const dataStr = JSON.stringify({
+      exportDate: new Date().toISOString(),
+      version: '7.0',
+      items: this.reviewItems
+    }, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+
+    if ('showSaveFilePicker' in window) {
+      try {
+        let options = {
+          suggestedName: `艾宾浩斯复习数据_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.json`,
+          types: [{ description: 'JSON文件', accept: { 'application/json': ['.json'] } }]
+        };
+        if (this.lastDirectoryHandle) options.startIn = this.lastDirectoryHandle;
+
+        const handle = await window.showSaveFilePicker(options);
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+
+        try {
+          if (handle.requestPermission) {
+            await handle.requestPermission({ mode: 'readwrite' });
+          }
+        } catch (permErr) {
+          console.log('无法请求权限:', permErr);
+        }
+
+        this.showPathHint(`上次保存位置: ${handle.name}`);
+        this.showNotification('📤 导出成功（已记忆位置）');
+      } catch (err) {
+        if (err.name !== 'AbortError') this.exportDataTraditional(blob);
+      }
+    } else {
+      this.exportDataTraditional(blob);
+    }
+  }
+
+  exportDataTraditional(blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `艾宾浩斯复习数据_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    this.showNotification('📤 导出成功（传统方式）');
+  }
+
+  async importData() {
+    if ('showOpenFilePicker' in window) {
+      let file = null;
+      let fileHandle = null;
+
+      try {
+        let options = {
+          types: [{ description: 'JSON文件', accept: { 'application/json': ['.json'] } }],
+          multiple: false
+        };
+        if (this.lastDirectoryHandle) {
+          options.startIn = this.lastDirectoryHandle;
+        }
+
+        [fileHandle] = await window.showOpenFilePicker(options);
+        file = await fileHandle.getFile();
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.error('File System Access API 失败:', err);
+        document.getElementById('importFile').click();
+        return;
+      }
+
+      if (file) {
+        try {
+          await this.processImportFile(file);
+        } catch (err) {
+          console.error('文件处理失败:', err);
+        }
+      }
+    } else {
+      document.getElementById('importFile').click();
+    }
+  }
+
+  async processImportFile(file) {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data.items || !Array.isArray(data.items)) throw new Error('格式错误');
+
+      const items = data.items.map(i => ({
+        ...i,
+        createdAt: new Date(i.createdAt),
+        nextReview: new Date(i.nextReview),
+        completedReviews: (i.completedReviews || []).map(d => new Date(d))
+      }));
+
+      if (!confirm(`导入 ${items.length} 条数据将覆盖现有内容，确定吗？`)) return;
+
+      this.reviewItems = items;
+      this.hasUnsavedChanges = true;
+      await this.saveData();
+      this.editingId = null;
+      this.render();
+      this.updateStats();
+      this.updateBellReminder(); 
+      this.showNotification(`📥 导入成功：${file.name}`);
+    } catch (err) {
+      alert('导入失败：' + err.message);
+      throw err;
+    }
+  }
+
+  async handleFileImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      await this.processImportFile(file);
+    } catch (err) {
+      console.error('传统方式导入失败:', err);
+    }
+    e.target.value = '';
+  }
+
+  // ========== 修改：移除自动保存倒计时 ==========
+  startEdit(id) {
+    if (this.editingId && this.editingId !== id) this.saveEdit(this.editingId);
+    this.editingId = id;
+    const item = this.reviewItems.find(i => i.id === id);
+    if (!item) return;
+    const card = document.getElementById(`item-${id}`);
+    if (!card) return;
+    card.classList.add('editing');
+    const viewMode = card.querySelector('.view-mode');
+    const editMode = card.querySelector('.edit-mode');
+    if (viewMode && editMode) {
+      viewMode.style.display = 'none';
+      editMode.style.display = 'block';
+      const titleInput = card.querySelector('.edit-title');
+      const editContent = card.querySelector('.edit-rich-content');
+      if (titleInput) titleInput.value = item.title;
+      if (editContent) {
+        // 使用 clozeToEditFormat 转换遮挡语法为可视化格式
+        editContent.innerHTML = this.clozeToEditFormat(item.content);
+        
+        const observer = new MutationObserver(() => {
+          this.hasUnsavedChanges = true;
+          // 只提示，不自动保存，不关闭编辑器
+          this.showSaveStatus('saving', '有未保存内容...'); 
+        });
+        observer.observe(editContent, { childList: true, subtree: true, characterData: true });
+      }
+    }
+  }
+
+  // ========== 修改：使用 false 静默保存 ==========
+  async saveEdit(id) {
+    const card = document.getElementById(`item-${id}`);
+    if (!card) return;
+    const titleInput = card.querySelector('.edit-title');
+    const contentEditor = card.querySelector('.edit-rich-content');
+    const newTitle = titleInput.value.trim();
+    // 将可视化遮挡块转换回 {{c1::内容}} 语法
+    const newContent = this.editFormatToCloze(contentEditor.innerHTML.trim());
+
+    if (!newTitle || !newContent || newContent === '<br>') {
+      alert('标题和内容不能为空！');
+      return;
+    }
+
+    const item = this.reviewItems.find(i => i.id === id);
+    if (item) {
+      item.title = newTitle;
+      item.content = newContent;
+      
+      this.hasUnsavedChanges = true;
+      // 使用静默保存，不弹出顶部"已保存"
+      await this.saveData(false); 
+      
+      this.editingId = null;
+      this.render();
+      this.updateStats();
+      this.showNotification('✏️ 已保存并退出编辑');
+    }
+  }
+
+  cancelEdit(id) {
+    this.editingId = null;
+    const card = document.getElementById(`item-${id}`);
+    if (!card) return;
+    card.classList.remove('editing');
+    const viewMode = card.querySelector('.view-mode');
+    const editMode = card.querySelector('.edit-mode');
+    if (viewMode && editMode) {
+      viewMode.style.display = 'block';
+      editMode.style.display = 'none';
+      // 重新渲染以确保数据回滚（如果在编辑状态下切换幻灯片）
+      this.render();
+    }
+  }
+
+  // ========== 修改：移除自动保存倒计时 ==========
+  formatEditDoc(id, cmd, value = null) {
+    const card = document.getElementById(`item-${id}`);
+    if (!card) return;
+    const editor = card.querySelector('.edit-rich-content');
+    if (editor) {
+      editor.focus();
+      document.execCommand(cmd, false, value);
+      
+      this.hasUnsavedChanges = true;
+      this.showSaveStatus('saving', '格式已修改(未保存)');
+    }
+  }
+
+  async markAsReviewed(id) {
+    // 保留原方法兼容性，默认按"记得"处理
+    return this.rateReview(id, 'good');
+  }
+
+  /**
+   * 复习评分（动态间隔算法，简化版 SuperMemo SM-2）
+   * @param {number} id - 项目ID
+   * @param {string} rating - 评分: forget(忘记) | hard(困难) | good(记得) | easy(简单)
+   */
+  async rateReview(id, rating) {
+    if (this.editingId === id) await this.saveEdit(id);
+    const item = this.reviewItems.find(i => i.id === id);
+    if (!item) return;
+
+    item.reviewCount++;
+    item.completedReviews.push(new Date());
+
+    // 初始化动态间隔相关字段
+    if (item.easeFactor === undefined) item.easeFactor = 2.5;
+    if (item.lastIntervalDays === undefined) item.lastIntervalDays = 0;
+
+    let nextDays = 1;
+    let notificationMsg = '';
+    const maxStage = this.reviewIntervals.length - 1; // 第7阶段
+    const isInDynamicPhase = item.currentInterval >= maxStage;
+
+    switch (rating) {
+      case 'forget':
+        // 忘记：重置回第1阶段，降低难度系数
+        item.currentInterval = 0;
+        item.easeFactor = Math.max(1.3, item.easeFactor - 0.2);
+        nextDays = this.reviewIntervals[0];
+        item.lastIntervalDays = nextDays;
+        notificationMsg = '😰 已重置，明天再复习';
+        break;
+
+      case 'hard':
+        if (isInDynamicPhase) {
+          // 动态阶段：间隔 × 1.2，降低难度系数
+          item.easeFactor = Math.max(1.3, item.easeFactor - 0.15);
+          const baseInterval = item.lastIntervalDays || 60;
+          nextDays = Math.max(1, Math.round(baseInterval * 1.2));
+          item.lastIntervalDays = nextDays;
+        } else {
+          // 固定阶段：间隔减半
+          const nextStageDays = this.reviewIntervals[item.currentInterval + 1];
+          nextDays = Math.max(1, Math.floor(nextStageDays / 2));
+          item.currentInterval++;
+          item.lastIntervalDays = nextDays;
+        }
+        notificationMsg = '😓 加油，保持复习';
+        break;
+
+      case 'good':
+        if (isInDynamicPhase) {
+          // 动态阶段：间隔 × easeFactor
+          const baseInterval = item.lastIntervalDays || 60;
+          nextDays = Math.round(baseInterval * item.easeFactor);
+          item.lastIntervalDays = nextDays;
+        } else {
+          // 固定阶段：正常推进
+          item.currentInterval++;
+          nextDays = this.reviewIntervals[item.currentInterval];
+          item.lastIntervalDays = nextDays;
+        }
+        notificationMsg = '😊 复习完成！';
+        break;
+
+      case 'easy':
+        // 提升难度系数
+        item.easeFactor = Math.min(3.0, item.easeFactor + 0.1);
+
+        if (isInDynamicPhase) {
+          // 动态阶段：间隔 × easeFactor × 1.3（额外加速）
+          const baseInterval = item.lastIntervalDays || 60;
+          nextDays = Math.round(baseInterval * item.easeFactor * 1.3);
+          item.lastIntervalDays = nextDays;
+        } else {
+          // 固定阶段：跳级推进（+2）
+          if (item.currentInterval < maxStage - 1) {
+            item.currentInterval += 2;
+          } else {
+            item.currentInterval = maxStage;
+          }
+          nextDays = this.reviewIntervals[item.currentInterval];
+          item.lastIntervalDays = nextDays;
+        }
+        notificationMsg = '😎 太棒了！';
+        break;
+    }
+
+    item.nextReview = new Date(Date.now() + nextDays * 24 * 60 * 60 * 1000);
+    this.hasUnsavedChanges = true;
+    await this.saveData();
+    this.render();
+    this.updateStats();
+    this.updateBellReminder();
+    this.showNotification(`${notificationMsg} (${nextDays}天后)`);
+  }
+
+  async deleteItem(id) {
+    if (this.editingId === id) {
+      if (!confirm('正在编辑中，确定要删除吗？')) return;
+    } else {
+      if (!confirm('确定删除？')) return;
+    }
+    this.editingId = null;
+    this.reviewItems = this.reviewItems.filter(i => i.id !== id);
+    this.hasUnsavedChanges = true;
+    await this.saveData();
+    this.render();
+    this.updateStats();
+    this.updateBellReminder(); 
+    this.showNotification('🗑️ 已删除');
+  }
+
+  categorizeItems() {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const three = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
+    return {
+      urgent: this.reviewItems.filter(i => i.nextReview < today),
+      today: this.reviewItems.filter(i => {
+        const d = new Date(i.nextReview);
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() === today.getTime();
+      }),
+      upcoming: this.reviewItems.filter(i => i.nextReview > today && i.nextReview <= three),
+      future: this.reviewItems.filter(i => i.nextReview > three)
+    };
+  }
+
+  render() {
+    const c = this.categorizeItems();
+    this.renderCat('urgentItems', c.urgent, 'urgent');
+    this.renderCat('todayItems', c.today, 'due-soon');
+    this.renderCat('upcomingItems', c.upcoming, 'due-soon');
+    this.renderCat('futureItems', c.future, 'future');
+  }
+
+  // ========== 新增：切换卡片 ==========
+// ========== 优化后：局部刷新的 changeSlide ==========
+  changeSlide(sectionId, delta) {
+    // 1. 更新当前板块的页码索引
+    if (this.slideState[sectionId] === undefined) this.slideState[sectionId] = 0;
+    this.slideState[sectionId] += delta;
+
+    // 2. 获取最新的数据分类
+    const c = this.categorizeItems();
+
+    // 3. 关键修改：只渲染当前操作的这一个板块 (sectionId)
+    // 之前的代码在这里调用了 this.render()，导致了全局刷新
+    switch (sectionId) {
+      case 'urgentItems':
+        this.renderCat('urgentItems', c.urgent, 'urgent');
+        break;
+      case 'todayItems':
+        this.renderCat('todayItems', c.today, 'due-soon');
+        break;
+      case 'upcomingItems':
+        this.renderCat('upcomingItems', c.upcoming, 'due-soon');
+        break;
+      case 'futureItems':
+        this.renderCat('futureItems', c.future, 'future');
+        break;
+    }
+  }
+
+  // ========== 修改：卡片式渲染逻辑 ==========
+  renderCat(elementId, items, cls) {
+    const box = document.getElementById(elementId);
+    
+    if (!items.length) {
+      box.innerHTML = `<div class="empty-state"><span style="font-size:2em">🎉</span><p>暂无内容</p></div>`;
+      this.slideState[elementId] = 0;
+      return;
+    }
+
+    // 索引修正
+    let currentIndex = this.slideState[elementId] || 0;
+    if (currentIndex >= items.length) currentIndex = items.length - 1;
+    if (currentIndex < 0) currentIndex = 0;
+    this.slideState[elementId] = currentIndex; 
+
+    const currentItem = items[currentIndex];
+
+    const isFirst = currentIndex === 0;
+    const isLast = currentIndex === items.length - 1;
+    
+    // 导航栏HTML
+    const controlsHTML = `
+      <div class="card-controls ${cls}">
+        <button class="nav-btn" onclick="reviewSystem.changeSlide('${elementId}', -1)" ${isFirst ? 'disabled' : ''} title="上一张">❮</button>
+        <span class="page-indicator">第 ${currentIndex + 1} / ${items.length} 项</span>
+        <button class="nav-btn" onclick="reviewSystem.changeSlide('${elementId}', 1)" ${isLast ? 'disabled' : ''} title="下一张">❯</button>
+      </div>
+    `;
+
+    // 将 card-view-item 类添加到 itemHTML 中
+    const itemHTMLContent = this.itemHTML(currentItem, cls + ' card-view-item');
+
+    box.innerHTML = controlsHTML + itemHTMLContent;
+  }
+
+  itemHTML(item, cls) {
+    const isEditing = this.editingId === item.id;
+    const dots = this.reviewIntervals.map((_, idx) => {
+      let c = 'cycle-dot';
+      if (idx < item.currentInterval) c += ' completed';
+      else if (idx === item.currentInterval) c += ' current';
+      return `<div class="${c}"></div>`;
+    }).join('');
+    return `
+      <div class="review-item ${cls} ${isEditing ? 'editing' : ''}" id="item-${item.id}">
+        <div class="view-mode" style="${isEditing ? 'display:none' : 'display:block'}">
+          <div class="item-header">
+            <div>
+              <div class="item-title">${this.escapeHtml(item.title)}</div>
+              <div class="item-dates">
+                创建：${item.createdAt.toLocaleDateString('zh-CN')} |
+                下次：${item.nextReview.toLocaleDateString('zh-CN')} |
+                已复习：${item.reviewCount} 次
+              </div>
+              <div class="review-cycle">复习进度：${dots} ${item.currentInterval >= 6 ? '<span class="dynamic-badge">动态</span>' : ''}</div>
+              <div class="ease-info">难度系数：${(item.easeFactor || 2.5).toFixed(2)}</div>
+            </div>
+          </div>
+          <div class="item-content">${this.parseCloze(item.content)}</div>
+          <div class="item-actions">
+            <div class="rating-btns">
+              <button class="rating-btn forget" onclick="reviewSystem.rateReview(${item.id}, 'forget')" title="重置到第1天">😰 忘记</button>
+              <button class="rating-btn hard" onclick="reviewSystem.rateReview(${item.id}, 'hard')" title="间隔减半">😓 困难</button>
+              <button class="rating-btn good" onclick="reviewSystem.rateReview(${item.id}, 'good')" title="正常推进">😊 记得</button>
+              <button class="rating-btn easy" onclick="reviewSystem.rateReview(${item.id}, 'easy')" title="跳级推进">😎 简单</button>
+            </div>
+            <button class="btn btn-small btn-warning" onclick="reviewSystem.startEdit(${item.id})">✏️</button>
+            <button class="btn btn-small btn-danger" onclick="reviewSystem.deleteItem(${item.id})">🗑️</button>
+          </div>
+        </div>
+        <div class="edit-mode" style="${isEditing ? 'display:block' : 'display:none'}">
+          <div style="margin-bottom:10px;">
+            <label style="font-weight:600;color:#495057;display:block;margin-bottom:5px;">标题</label>
+            <input type="text" class="edit-title edit-input" value="${this.escapeHtml(item.title)}">
+          </div>
+          <div style="margin-bottom:10px;">
+            <label style="font-weight:600;color:#495057;display:block;margin-bottom:5px;">内容</label>
+            <div class="edit-rich-editor">
+              <div class="editor-toolbar" style="padding:6px;flex-wrap:wrap;">
+                <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'bold')"><b>B</b></button>
+                <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'italic')"><i>I</i></button>
+                <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'underline')"><u>U</u></button>
+                <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'strikeThrough')"><s>S</s></button>
+                <div class="toolbar-divider"></div>
+                <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'insertUnorderedList')">• 列表</button>
+                <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'insertOrderedList')">1. 列表</button>
+                <div class="toolbar-divider"></div>
+                <div class="color-picker" style="transform:scale(0.9);">
+                  <button type="button" class="color-btn" style="background:#ff0000" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#ff0000')"></button>
+                  <button type="button" class="color-btn" style="background:#ffa500" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#ffa500')"></button>
+                  <button type="button" class="color-btn" style="background:#ffff00" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#ffff00')"></button>
+                  <button type="button" class="color-btn" style="background:#008000" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#008000')"></button>
+                  <button type="button" class="color-btn" style="background:#00ffff" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#00ffff')"></button>
+                  <button type="button" class="color-btn" style="background:#0000ff" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#0000ff')"></button>
+                  <button type="button" class="color-btn" style="background:#800080" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#800080')"></button>
+                  <button type="button" class="color-btn" style="background:#000000" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#000000')"></button>
+                  <button type="button" class="color-btn" style="background:#ffffff" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#ffffff')"></button>
+                </div>
+                <div class="toolbar-divider"></div>
+                <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'removeFormat')">🧹</button>
+                <button type="button" onclick="removeEditCloze(${item.id})" title="清除遮挡">🔓</button>
+                <div class="toolbar-divider"></div>
+                <button type="button" onclick="addEditCloze(${item.id})" title="添加遮挡 (选中文字后点击)">🔒 遮挡</button>
+              </div>
+              <div class="edit-rich-content editor-content" contenteditable="true" style="min-height:100px;">${this.clozeToEditFormat(item.content)}</div>
+            </div>
+          </div>
+          <div style="font-size:0.9em;color:#6c757d;margin-bottom:10px;">💡 请点击右下角保存按钮提交修改</div>
+          <div class="edit-actions">
+            <button class="btn btn-small btn-cancel" onclick="reviewSystem.cancelEdit(${item.id})">❌ 取消</button>
+            <button class="btn btn-small btn-success" onclick="reviewSystem.saveEdit(${item.id})">💾 立即保存</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // 解析完形填空遮挡语法 {{c1::内容}} → [点击显示]
+  parseCloze(content) {
+    return content.replace(/\{\{c(\d+)::([\s\S]*?)\}\}/g, (match, num, text) => {
+      // 使用 encodeURIComponent 编码 HTML 内容，安全存储到属性中
+      const encoded = encodeURIComponent(text);
+      // 点击后移除所有样式，只显示原始内容
+      return `<span class="cloze" data-content="${encoded}" onclick="this.className='';this.innerHTML=decodeURIComponent(this.dataset.content)">[点击显示]</span>`;
+    });
+  }
+
+  // 编辑模式：将 {{c1::内容}} 转换为可视化遮挡块
+  clozeToEditFormat(content) {
+    return content.replace(/\{\{c(\d+)::([\s\S]*?)\}\}/g, (match, num, text) => {
+      // 不设置 contenteditable，因为父元素已经是 contenteditable
+      return `<span class="cloze-edit" data-cloze-num="${num}">${text}</span>`;
+    });
+  }
+
+  // 保存时：将可视化遮挡块转换回 {{c1::内容}} 语法
+  // 使用层级匹配处理嵌套的 span 标签
+  editFormatToCloze(content) {
+    let result = content;
+    let changed = true;
+
+    while (changed) {
+      changed = false;
+      // 查找 <span class="cloze-edit" 开始的位置
+      const startMatch = result.match(/<span([^>]*)class="cloze-edit"([^>]*)>/i);
+      if (!startMatch) break;
+
+      const startIndex = startMatch.index;
+      const afterStart = startIndex + startMatch[0].length;
+
+      // 从开始标签后，找到匹配的结束 </span>，考虑嵌套层级
+      let depth = 1;
+      let endIndex = afterStart;
+      let lastEnd = afterStart;
+      const rest = result.substring(afterStart);
+
+      const tagRegex = /<\/?span[^>]*>/gi;
+      let match;
+
+      while ((match = tagRegex.exec(rest)) !== null && depth > 0) {
+        if (match[0].startsWith('</')) {
+          depth--;
+          if (depth === 0) {
+            endIndex = afterStart + match.index;
+            lastEnd = afterStart + match.index + match[0].length;
+          }
+        } else {
+          depth++;
+        }
+      }
+
+      if (depth === 0) {
+        const innerContent = result.substring(afterStart, endIndex);
+        const before = result.substring(0, startIndex);
+        const after = result.substring(lastEnd);
+        result = before + `{{c1::${innerContent}}}` + after;
+        changed = true;
+      } else {
+        break;
+      }
+    }
+
+    return result;
+  }
+
+  updateStats() {
+    const c = this.categorizeItems();
+    const today = new Date();
+    const doneToday = this.reviewItems.filter(i =>
+      i.completedReviews.some(d => new Date(d).toDateString() === today.toDateString())
+    ).length;
+    document.getElementById('totalItems').textContent = this.reviewItems.length;
+    document.getElementById('dueToday').textContent = c.urgent.length + c.today.length;
+    document.getElementById('completedToday').textContent = doneToday;
+    document.getElementById('streakDays').textContent = this.calcStreak();
+  }
+
+  calcStreak() {
+    let streak = 0;
+    let d = new Date();
+    while (streak < 365) {
+      const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const has = this.reviewItems.some(i =>
+        i.completedReviews.some(r => new Date(r).toDateString() === day.toDateString())
+      );
+      if (has) { streak++; d.setDate(d.getDate() - 1); } else break;
+    }
+    return streak;
+  }
+
+  async clearAllData() {
+    if (this.editingId) {
+      if (!confirm('正在编辑中，确定要清空所有数据吗？')) return;
+    }
+    if (!confirm('⚠️ 清空后不可恢复，确定吗？')) return;
+    if (!confirm('再次确认：真的要清空？')) return;
+    this.reviewItems = [];
+    this.editingId = null;
+    this.hasUnsavedChanges = true;
+    await this.saveData();
+    localStorage.removeItem('reviewItems_backup');
+    localStorage.removeItem('reviewItems_backup_time');
+    this.lastDirectoryHandle = null;
+    await this.storage.setItem('lastDirectoryHandle', null);
+    this.render();
+    this.updateStats();
+    this.updateBellReminder(); 
+    this.showNotification('🗑️ 已清空');
+  }
+
+  showNotification(msg) {
+    const n = document.createElement('div');
+    n.style.cssText = `position:fixed;top:20px;right:20px;background:#51cf66;color:#fff;padding:12px 20px;border-radius:8px;font-weight:600;z-index:1000;animation:slideIn 0.3s ease`;
+    n.textContent = msg;
+    document.body.appendChild(n);
+    setTimeout(() => {
+      n.style.opacity = '0';
+      n.style.transform = 'translateX(100%)';
+      n.style.transition = 'all 0.3s';
+      setTimeout(() => n.remove(), 300);
+    }, 3000);
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  if (reviewSystem.editingId) {
+    if (e.ctrlKey && e.key === 'Enter') {
+      e.preventDefault();
+      reviewSystem.saveEdit(reviewSystem.editingId);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      reviewSystem.cancelEdit(reviewSystem.editingId);
+    }
+  }
+});
+
+const reviewSystem = new EbbinghausReviewSystem();
+reviewSystem.init().then(() => console.log('✅ V7 卡片专注版启动'));
+  </script>
+
+  <style>
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</body>
+</html>
