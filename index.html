@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8"/>
-<title>复习提醒系统（V7 卡片专注版）</title>
+<title>复习提醒系统（V7 Supabase 云同步版）</title>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
@@ -16,7 +16,7 @@
     color:#fff;
     padding:30px;
     text-align:center;
-    position:relative; 
+    position:relative;
   }
   .header h1{font-size:2.2em;font-weight:300;margin-bottom:10px}
   .header p{opacity:.9;font-size:1.1em}
@@ -141,7 +141,7 @@
 
   .review-sections{display:grid;gap:20px;width:100%;box-sizing:border-box;grid-template-columns:minmax(0,1fr)}
   .section-title{color:#343a40;font-size:1.5em;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid #e9ecef;scroll-margin-top:100px;overflow-wrap:break-word;word-break:break-word}
-  
+
   /* ========== 复习项目卡片样式 ========== */
   .review-item{background:#fff;border:1px solid #e9ecef;border-radius:10px;padding:20px;margin-bottom:15px;box-shadow:0 2px 10px rgba(0,0,0,.05);transition:all .3s;width:100%;max-width:100%;overflow-wrap:break-word;word-break:break-word;box-sizing:border-box}
   .review-item:hover{transform:translateY(-3px);box-shadow:0 8px 25px rgba(0,0,0,.1)}
@@ -240,7 +240,7 @@
   .cycle-dot{width:12px;height:12px;border-radius:50%;background:#e9ecef;flex-shrink:0}
   .cycle-dot.completed{background:#51cf66}
   .cycle-dot.current{background:#ffa500}
-  
+
   .stats{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:20px;border-radius:10px;margin-bottom:30px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,0.2);border-left:5px solid rgba(255,255,255,0.5)}
   .stat-item{text-align:center}
   .stat-number{font-size:2em;font-weight:700;margin-bottom:5px}
@@ -256,15 +256,21 @@
   .btn-cancel{background:#6c757d}
 
   /* 数据安全提示 */
-  .backup-notice{background:linear-gradient(135deg,#fff3cd 0%,#ffeeba 100%);border:1px solid #ffc107;border-radius:8px;padding:15px;margin-bottom:20px;font-size:.9em;color:#856404}
+  .backup-notice{background:linear-gradient(135deg,#d4edda 0%,#c3e6cb 100%);border:1px solid #28a745;border-radius:8px;padding:15px;margin-bottom:20px;font-size:.9em;color:#155724}
   .backup-notice strong{display:block;margin-bottom:5px}
-  .path-hint{font-size:12px;color:#6c757d;margin-top:5px;font-style:italic}
+
+  /* 连接状态 */
+  .connection-status{display:flex;align-items:center;gap:8px;font-size:0.9em;margin-top:10px}
+  .status-dot{width:10px;height:10px;border-radius:50%;animation:blink 1.5s infinite}
+  .status-dot.connected{background:#28a745}
+  .status-dot.disconnected{background:#dc3545}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.5}
 
   html{scroll-behavior:smooth}
 
   @media(max-width:768px){
     .bell-reminder{top:10px;left:10px;padding:6px 12px}
-    .bell-text{display:none} 
+    .bell-text{display:none}
     .header h1{font-size:1.8em}
     .item-header{width:100%}
     .item-actions{justify-content:flex-start}
@@ -276,7 +282,7 @@
 <body>
   <div id="saveIndicator" class="save-indicator saved" style="display:none;">
     <span class="save-dot"></span>
-    <span id="saveText">已保存</span>
+    <span id="saveText">已同步</span>
   </div>
 
   <div class="container">
@@ -288,16 +294,16 @@
       </a>
 
       <h1>复习提醒系统</h1>
-      <p>基于科学记忆曲线的智能复习安排（防数据丢失增强版+目录记忆）</p>
+      <p>基于科学记忆曲线的智能复习安排（Supabase 云同步版）</p>
     </div>
 
     <div class="main-content">
       <div class="backup-notice">
-        <strong>💾 数据保护机制已启用</strong>
-        • 编辑后不自动保存（需手动） • 关闭页面前自动备份 • 支持手动导出 • 每60分钟定期保存<br>
-        <small>建议定期使用"导出备份"功能保存到本地文件，以防浏览器数据被清除</small>
-        <div style="margin-top:5px;font-size:0.9em;">
-          <strong>🔔 铃铛提醒：</strong>左上角铃铛显示今日待复习数量，点击可快速跳转到复习列表
+        <strong>☁️ Supabase 云同步已启用</strong>
+        • 数据自动同步到云端 • 支持跨设备访问 • 本地保留备份<br>
+        <div class="connection-status">
+          <span class="status-dot" id="statusDot"></span>
+          <span id="statusText">正在连接...</span>
         </div>
       </div>
 
@@ -357,18 +363,10 @@
           <h4 style="margin-bottom:15px;color:#495057">💾 数据管理</h4>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button class="btn btn-small" onclick="reviewSystem.exportData()">📤 导出备份</button>
-            <button class="btn btn-small" onclick="reviewSystem.importData()">📥 导入备份（已修复）</button>
-            <button class="btn btn-small" onclick="reviewSystem.backupToLocalStorage()" title="双重备份到本地存储">🛡️ 紧急备份</button>
+            <button class="btn btn-small" onclick="reviewSystem.importData()">📥 导入数据</button>
             <button class="btn btn-small btn-danger" onclick="reviewSystem.clearAllData()">🗑️ 清空所有数据</button>
           </div>
-          <div id="lastPathHint" class="path-hint" style="display:none;"></div>
           <input type="file" id="importFile" accept=".json" style="display:none"/>
-          <p style="margin-top:10px;font-size:.9em;color:#6c757d">
-            <strong>数据安全提示：</strong><br/>
-            • 本应用使用 IndexedDB + LocalStorage 双重存储保护<br/>
-            • 关闭页面前自动备份，编辑内容需点击保存<br/>
-            • 建议定期"导出备份"到本地文件以防浏览器数据被清除
-          </p>
         </div>
       </div>
 
@@ -398,44 +396,106 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
-/* ========== IndexedDB 工具 ========== */
-class IndexedDBStorage {
-  constructor(dbName = 'EbbinghausDB', storeName = 'reviewItems') {
-    this.dbName = dbName;
-    this.storeName = storeName;
-    this.db = null;
+/* ========== Supabase 配置（请替换为你的配置） ========== */
+const SUPABASE_URL = 'https://seybjuagrwthgonvjesx.supabase.co';  // 替换为你的 Project URL
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNleWJqdWFncnd0aGdvbnZqZXN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Njc5NDAsImV4cCI6MjA4OTU0Mzk0MH0.Qy501V_HnmA5Gj2sNorIqUXlwuMaSmvRCDCKQmXijDQ';
+
+/* ========== Supabase 存储类 ========== */
+class SupabaseStorage {
+  constructor() {
+    this.supabase = null;
+    this.tableName = 'review_items';
   }
+
   async init() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.dbName, 6);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => { this.db = request.result; resolve(); };
-      request.onupgradeneeded = (event) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(this.storeName)) {
-          db.createObjectStore(this.storeName, { keyPath: 'key' });
-        }
-      };
-    });
+    // 先创建客户端
+    this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // 测试连接
+    const { error } = await this.supabase.from(this.tableName).select('id').limit(1);
+    if (error && error.code !== 'PGRST116') {
+      console.warn('Supabase 连接测试失败:', error.message);
+      throw error;
+    }
+    console.log('✅ Supabase 连接成功');
   }
-  async setItem(key, value) {
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction(this.storeName, 'readwrite');
-      const store = tx.objectStore(this.storeName);
-      const request = store.put({ key, value });
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+
+  async getAllItems() {
+    const { data, error } = await this.supabase
+      .from(this.tableName)
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
   }
-  async getItem(key) {
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction(this.storeName, 'readonly');
-      const store = tx.objectStore(this.storeName);
-      const req = store.get(key);
-      req.onsuccess = () => resolve(req.result?.value || null);
-      req.onerror = () => reject(req.error);
-    });
+
+  async addItem(item) {
+    const dbItem = this.toDbFormat(item);
+    // 不发送 id，让数据库自动生成
+    delete dbItem.id;
+    const { data, error } = await this.supabase
+      .from(this.tableName)
+      .insert([dbItem])
+      .select();
+    if (error) throw error;
+    return data?.[0];
+  }
+
+  async updateItem(id, updates) {
+    const dbUpdates = this.toDbFormat(updates);
+    dbUpdates.updated_at = new Date().toISOString();
+    const { error } = await this.supabase
+      .from(this.tableName)
+      .update(dbUpdates)
+      .eq('id', id);
+    if (error) throw error;
+  }
+
+  async deleteItem(id) {
+    const { error } = await this.supabase
+      .from(this.tableName)
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  }
+
+  async clearAll() {
+    const { error } = await this.supabase
+      .from(this.tableName)
+      .delete()
+      .neq('id', 0);
+    if (error) throw error;
+  }
+
+  toDbFormat(item) {
+    const dbItem = {};
+    if (item.id !== undefined) dbItem.id = item.id;
+    if (item.title !== undefined) dbItem.title = item.title;
+    if (item.content !== undefined) dbItem.content = item.content;
+    if (item.createdAt !== undefined) dbItem.created_at = new Date(item.createdAt).toISOString();
+    if (item.currentInterval !== undefined) dbItem.current_interval = item.currentInterval;
+    if (item.reviewCount !== undefined) dbItem.review_count = item.reviewCount;
+    if (item.nextReview !== undefined) dbItem.next_review = new Date(item.nextReview).toISOString();
+    if (item.completedReviews !== undefined) dbItem.completed_reviews = item.completedReviews.map(d => new Date(d).toISOString());
+    if (item.easeFactor !== undefined) dbItem.ease_factor = item.easeFactor;
+    if (item.lastIntervalDays !== undefined) dbItem.last_interval_days = item.lastIntervalDays;
+    return dbItem;
+  }
+
+  fromDbFormat(dbItem) {
+    return {
+      id: dbItem.id,
+      title: dbItem.title,
+      content: dbItem.content,
+      createdAt: new Date(dbItem.created_at),
+      currentInterval: dbItem.current_interval || 0,
+      reviewCount: dbItem.review_count || 0,
+      nextReview: new Date(dbItem.next_review),
+      completedReviews: (dbItem.completed_reviews || []).map(d => new Date(d)),
+      easeFactor: dbItem.ease_factor || 2.5,
+      lastIntervalDays: dbItem.last_interval_days || 0
+    };
   }
 }
 
@@ -446,24 +506,19 @@ function formatDoc(cmd, value = null) {
   if (editor) editor.focus();
 }
 
-// 添加遮挡语法（主编辑器）- 使用可视化遮挡块
 function addCloze() {
   const selection = window.getSelection();
   if (selection.rangeCount > 0 && selection.toString().trim()) {
     const range = selection.getRangeAt(0);
-    // 获取选中内容的 HTML（保留格式）
     const fragment = range.extractContents();
     const tempDiv = document.createElement('div');
     tempDiv.appendChild(fragment);
     const selectedHTML = tempDiv.innerHTML;
-
-    // 创建可视化遮挡块（与编辑模式一致）
     const span = document.createElement('span');
     span.className = 'cloze-edit';
     span.setAttribute('data-cloze-num', '1');
     span.innerHTML = selectedHTML;
     range.insertNode(span);
-    // 将光标移到插入内容后面
     range.setStartAfter(span);
     range.collapse(true);
     selection.removeAllRanges();
@@ -473,24 +528,14 @@ function addCloze() {
   }
 }
 
-// 清除遮挡（主编辑器）
 function removeCloze() {
   const selection = window.getSelection();
   if (selection.rangeCount > 0) {
     const range = selection.getRangeAt(0);
     const container = range.commonAncestorContainer;
-    // 查找选中范围内的所有遮挡块
-    const clozeBlocks = container.nodeType === 3
-      ? []
-      : container.querySelectorAll('.cloze-edit');
-
-    clozeBlocks.forEach(block => {
-      // 将遮挡块替换为纯文本内容
-      block.replaceWith(...block.childNodes);
-    });
-
+    const clozeBlocks = container.nodeType === 3 ? [] : container.querySelectorAll('.cloze-edit');
+    clozeBlocks.forEach(block => block.replaceWith(...block.childNodes));
     if (clozeBlocks.length === 0) {
-      // 如果没有找到遮挡块，尝试查找包含光标的遮挡块
       let parent = container.nodeType === 3 ? container.parentElement : container;
       while (parent && !parent.classList?.contains('cloze-edit')) {
         parent = parent.parentElement;
@@ -502,35 +547,12 @@ function removeCloze() {
   }
 }
 
-// 添加遮挡语法（编辑模式）- 创建可视化遮挡块
 function addEditCloze(itemId) {
-  const selection = window.getSelection();
-  if (selection.rangeCount > 0 && selection.toString().trim()) {
-    const range = selection.getRangeAt(0);
-    // 获取选中内容的 HTML（保留格式）
-    const fragment = range.extractContents();
-    const tempDiv = document.createElement('div');
-    tempDiv.appendChild(fragment);
-    const selectedHTML = tempDiv.innerHTML;
-
-    // 创建可视化遮挡块（不设置 contenteditable，继承父元素）
-    const span = document.createElement('span');
-    span.className = 'cloze-edit';
-    span.setAttribute('data-cloze-num', '1');
-    span.innerHTML = selectedHTML;
-    range.insertNode(span);
-    range.setStartAfter(span);
-    range.collapse(true);
-    selection.removeAllRanges();
-    selection.addRange(range);
-  } else {
-    alert('请先选中要遮挡的文字');
-  }
+  addCloze();
 }
 
-// 清除遮挡（编辑模式）
 function removeEditCloze(itemId) {
-  removeCloze(); // 复用主编辑器逻辑
+  removeCloze();
 }
 
 document.addEventListener('keydown', (e) => {
@@ -549,31 +571,380 @@ document.addEventListener('keydown', (e) => {
 class EbbinghausReviewSystem {
   constructor() {
     this.reviewIntervals = [1, 2, 4, 7, 15, 30, 60];
-    this.storage = new IndexedDBStorage();
+    this.storage = new SupabaseStorage();
     this.editingId = null;
-    this.hasUnsavedChanges = false;
-    this.saveDebounceTimer = null;
-    this.isSaving = false;
-    this.lastDirectoryHandle = null;
-    
-    // ========== 新增：卡片浏览状态 ==========
-    // 记录每个区域当前显示的索引 { urgentItems: 0, todayItems: 2, ... }
-    this.slideState = {}; 
+    this.slideState = {};
+    this.reviewItems = [];
   }
 
   async init() {
-    await this.storage.init();
-    await this.loadDataWithFallback();
-    this.loadLastDirectory();
-    this.initEventListeners();
-    this.initAutoSave();
-    this.render();
-    this.updateStats();
-    this.updateBellReminder(); 
+    try {
+      await this.storage.init();
+      await this.loadData();
+      this.initEventListeners();
+      this.render();
+      this.updateStats();
+      this.updateBellReminder();
+      this.updateConnectionStatus(true);
+      console.log('✅ Supabase 数据加载成功');
+    } catch (e) {
+      console.error('初始化失败，回退到本地存储:', e);
+      this.updateConnectionStatus(false);
+      this.loadLocalBackup();
+      this.initEventListeners();
+      this.render();
+      this.updateStats();
+      this.updateBellReminder();
+    }
+  }
 
-    setInterval(async () => {
-      if (this.hasUnsavedChanges) await this.saveData();
-    }, 60 * 60 * 1000);
+  updateConnectionStatus(connected) {
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    if (connected) {
+      dot.className = 'status-dot connected';
+      text.textContent = '已连接到云端';
+    } else {
+      dot.className = 'status-dot disconnected';
+      text.textContent = '离线模式（本地存储）';
+    }
+  }
+
+  async loadData() {
+    const items = await this.storage.getAllItems();
+    this.reviewItems = items.map(item => this.storage.fromDbFormat(item));
+  }
+
+  loadLocalBackup() {
+    try {
+      const backup = localStorage.getItem('reviewItems_backup');
+      if (backup) {
+        const data = JSON.parse(backup);
+        this.reviewItems = data.map(item => ({
+          ...item,
+          createdAt: new Date(item.createdAt),
+          nextReview: new Date(item.nextReview),
+          completedReviews: (item.completedReviews || []).map(d => new Date(d))
+        }));
+      }
+    } catch (e) {
+      this.reviewItems = [];
+    }
+  }
+
+  backupToLocalStorage() {
+    try {
+      localStorage.setItem('reviewItems_backup', JSON.stringify(this.reviewItems));
+    } catch (e) {
+      console.error('备份失败:', e);
+    }
+  }
+
+  showNotification(msg, isError = false) {
+    const n = document.createElement('div');
+    n.style.cssText = `position:fixed;top:20px;right:20px;background:${isError ? '#ff6b6b' : '#51cf66'};color:#fff;padding:12px 20px;border-radius:8px;font-weight:600;z-index:1000;animation:slideIn 0.3s ease`;
+    n.textContent = msg;
+    document.body.appendChild(n);
+    setTimeout(() => {
+      n.style.opacity = '0';
+      n.style.transform = 'translateX(100%)';
+      n.style.transition = 'all 0.3s';
+      setTimeout(() => n.remove(), 300);
+    }, 3000);
+  }
+
+  initEventListeners() {
+    document.getElementById('addForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      await this.addItem();
+    });
+    document.getElementById('importFile').addEventListener('change', e => this.handleFileImport(e));
+  }
+
+  async addItem() {
+    const title = document.getElementById('title').value.trim();
+    const content = this.editFormatToCloze(document.getElementById('content').innerHTML.trim());
+    if (!title || !content || content === '<br>') return alert('请填写完整！');
+
+    const item = {
+      // id 由数据库自动生成
+      title,
+      content,
+      createdAt: new Date(),
+      currentInterval: 0,
+      reviewCount: 0,
+      nextReview: new Date(Date.now() + this.reviewIntervals[0] * 24 * 60 * 60 * 1000),
+      completedReviews: [],
+      easeFactor: 2.5,
+      lastIntervalDays: 0
+    };
+
+    try {
+      const savedItem = await this.storage.addItem(item);
+      // 使用数据库返回的完整数据
+      const fullItem = this.storage.fromDbFormat(savedItem);
+      this.reviewItems.push(fullItem);
+      this.backupToLocalStorage();
+      this.render();
+      this.updateStats();
+      this.updateBellReminder();
+      document.getElementById('title').value = '';
+      document.getElementById('content').innerHTML = '';
+      this.showNotification('✅ 已添加并同步到云端');
+    } catch (e) {
+      console.error('添加失败:', e);
+      this.showNotification('❌ 添加失败，请检查网络', true);
+    }
+  }
+
+  async exportData() {
+    const dataStr = JSON.stringify({
+      exportDate: new Date().toISOString(),
+      version: '7.0-supabase',
+      items: this.reviewItems
+    }, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `艾宾浩斯复习数据_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    this.showNotification('📤 导出成功');
+  }
+
+  async importData() {
+    document.getElementById('importFile').click();
+  }
+
+  async processImportFile(file) {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data.items || !Array.isArray(data.items)) throw new Error('格式错误');
+
+      const items = data.items.map(i => ({
+        ...i,
+        createdAt: new Date(i.createdAt),
+        nextReview: new Date(i.nextReview),
+        completedReviews: (i.completedReviews || []).map(d => new Date(d))
+      }));
+
+      if (!confirm(`导入 ${items.length} 条数据。是否清空现有数据并导入？`)) return;
+
+      await this.storage.clearAll();
+      for (const item of items) {
+        await this.storage.addItem(item);
+      }
+
+      this.reviewItems = items;
+      this.backupToLocalStorage();
+      this.editingId = null;
+      this.render();
+      this.updateStats();
+      this.updateBellReminder();
+      this.showNotification(`📥 导入成功：${file.name}`);
+    } catch (err) {
+      alert('导入失败：' + err.message);
+    }
+  }
+
+  async handleFileImport(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    await this.processImportFile(file);
+    e.target.value = '';
+  }
+
+  startEdit(id) {
+    if (this.editingId && this.editingId !== id) this.saveEdit(this.editingId);
+    this.editingId = id;
+    const item = this.reviewItems.find(i => i.id === id);
+    if (!item) return;
+    const card = document.getElementById(`item-${id}`);
+    if (!card) return;
+    card.classList.add('editing');
+    const viewMode = card.querySelector('.view-mode');
+    const editMode = card.querySelector('.edit-mode');
+    if (viewMode && editMode) {
+      viewMode.style.display = 'none';
+      editMode.style.display = 'block';
+      const titleInput = card.querySelector('.edit-title');
+      const editContent = card.querySelector('.edit-rich-content');
+      if (titleInput) titleInput.value = item.title;
+      if (editContent) editContent.innerHTML = this.clozeToEditFormat(item.content);
+    }
+  }
+
+  async saveEdit(id) {
+    const card = document.getElementById(`item-${id}`);
+    if (!card) return;
+    const titleInput = card.querySelector('.edit-title');
+    const contentEditor = card.querySelector('.edit-rich-content');
+    const newTitle = titleInput.value.trim();
+    const newContent = this.editFormatToCloze(contentEditor.innerHTML.trim());
+
+    if (!newTitle || !newContent || newContent === '<br>') {
+      alert('标题和内容不能为空！');
+      return;
+    }
+
+    const item = this.reviewItems.find(i => i.id === id);
+    if (item) {
+      item.title = newTitle;
+      item.content = newContent;
+
+      try {
+        await this.storage.updateItem(id, item);
+        this.backupToLocalStorage();
+        this.editingId = null;
+        this.render();
+        this.updateStats();
+        this.showNotification('✏️ 已保存并同步');
+      } catch (e) {
+        console.error('保存失败:', e);
+        this.showNotification('❌ 保存失败，请检查网络', true);
+      }
+    }
+  }
+
+  cancelEdit(id) {
+    this.editingId = null;
+    this.render();
+  }
+
+  formatEditDoc(id, cmd, value = null) {
+    const card = document.getElementById(`item-${id}`);
+    if (!card) return;
+    const editor = card.querySelector('.edit-rich-content');
+    if (editor) {
+      editor.focus();
+      document.execCommand(cmd, false, value);
+    }
+  }
+
+  async rateReview(id, rating) {
+    if (this.editingId === id) await this.saveEdit(id);
+    const item = this.reviewItems.find(i => i.id === id);
+    if (!item) return;
+
+    item.reviewCount++;
+    item.completedReviews.push(new Date());
+
+    if (item.easeFactor === undefined) item.easeFactor = 2.5;
+    if (item.lastIntervalDays === undefined) item.lastIntervalDays = 0;
+
+    let nextDays = 1;
+    let notificationMsg = '';
+    const maxStage = this.reviewIntervals.length - 1;
+    const isInDynamicPhase = item.currentInterval >= maxStage;
+
+    switch (rating) {
+      case 'forget':
+        item.currentInterval = 0;
+        item.easeFactor = Math.max(1.3, item.easeFactor - 0.2);
+        nextDays = this.reviewIntervals[0];
+        item.lastIntervalDays = nextDays;
+        notificationMsg = '😰 已重置，明天再复习';
+        break;
+
+      case 'hard':
+        if (isInDynamicPhase) {
+          item.easeFactor = Math.max(1.3, item.easeFactor - 0.15);
+          const baseInterval = item.lastIntervalDays || 60;
+          nextDays = Math.max(1, Math.round(baseInterval * 1.2));
+          item.lastIntervalDays = nextDays;
+        } else {
+          const nextStageDays = this.reviewIntervals[item.currentInterval + 1];
+          nextDays = Math.max(1, Math.floor(nextStageDays / 2));
+          item.currentInterval++;
+          item.lastIntervalDays = nextDays;
+        }
+        notificationMsg = '😓 加油，保持复习';
+        break;
+
+      case 'good':
+        if (isInDynamicPhase) {
+          const baseInterval = item.lastIntervalDays || 60;
+          nextDays = Math.round(baseInterval * item.easeFactor);
+          item.lastIntervalDays = nextDays;
+        } else {
+          item.currentInterval++;
+          nextDays = this.reviewIntervals[item.currentInterval];
+          item.lastIntervalDays = nextDays;
+        }
+        notificationMsg = '😊 复习完成！';
+        break;
+
+      case 'easy':
+        item.easeFactor = Math.min(3.0, item.easeFactor + 0.1);
+        if (isInDynamicPhase) {
+          const baseInterval = item.lastIntervalDays || 60;
+          nextDays = Math.round(baseInterval * item.easeFactor * 1.3);
+          item.lastIntervalDays = nextDays;
+        } else {
+          if (item.currentInterval < maxStage - 1) {
+            item.currentInterval += 2;
+          } else {
+            item.currentInterval = maxStage;
+          }
+          nextDays = this.reviewIntervals[item.currentInterval];
+          item.lastIntervalDays = nextDays;
+        }
+        notificationMsg = '😎 太棒了！';
+        break;
+    }
+
+    item.nextReview = new Date(Date.now() + nextDays * 24 * 60 * 60 * 1000);
+
+    try {
+      await this.storage.updateItem(id, item);
+      this.backupToLocalStorage();
+      this.render();
+      this.updateStats();
+      this.updateBellReminder();
+      this.showNotification(`${notificationMsg} (${nextDays}天后)`);
+    } catch (e) {
+      console.error('更新失败:', e);
+      this.showNotification('❌ 同步失败，请检查网络', true);
+    }
+  }
+
+  async deleteItem(id) {
+    if (!confirm('确定删除？')) return;
+
+    try {
+      await this.storage.deleteItem(id);
+      this.reviewItems = this.reviewItems.filter(i => i.id !== id);
+      this.backupToLocalStorage();
+      this.editingId = null;
+      this.render();
+      this.updateStats();
+      this.updateBellReminder();
+      this.showNotification('🗑️ 已删除');
+    } catch (e) {
+      console.error('删除失败:', e);
+      this.showNotification('❌ 删除失败，请检查网络', true);
+    }
+  }
+
+  async clearAllData() {
+    if (!confirm('⚠️ 清空后不可恢复，确定吗？')) return;
+    if (!confirm('再次确认：真的要清空？')) return;
+
+    try {
+      await this.storage.clearAll();
+      this.reviewItems = [];
+      this.editingId = null;
+      localStorage.removeItem('reviewItems_backup');
+      this.render();
+      this.updateStats();
+      this.updateBellReminder();
+      this.showNotification('🗑️ 已清空');
+    } catch (e) {
+      console.error('清空失败:', e);
+      this.showNotification('❌ 清空失败，请检查网络', true);
+    }
   }
 
   updateBellReminder() {
@@ -585,7 +956,6 @@ class EbbinghausReviewSystem {
     if (bellCount) {
       bellCount.textContent = count;
       bellCount.className = 'bell-count';
-
       if (count === 0) {
         bellCount.classList.add('zero');
         if (bellText) bellText.textContent = '已完成';
@@ -607,504 +977,6 @@ class EbbinghausReviewSystem {
         todaySectionTitle.innerHTML = '📅 今日复习';
       }
     }
-  }
-
-  async loadLastDirectory() {
-    try {
-      const handle = await this.storage.getItem('lastDirectoryHandle');
-      if (handle) {
-        const permission = await handle.queryPermission({ mode: 'readwrite' });
-        if (permission === 'granted' || permission === 'prompt') {
-          this.lastDirectoryHandle = handle;
-          this.showPathHint('已记忆上次使用的文件夹');
-        }
-      }
-    } catch (e) {
-      console.log('无法恢复上次目录:', e);
-    }
-  }
-
-  showPathHint(text) {
-    const hint = document.getElementById('lastPathHint');
-    if (hint) {
-      hint.textContent = `📁 ${text}`;
-      hint.style.display = 'block';
-    }
-  }
-
-  async loadDataWithFallback() {
-    try {
-      let data = await this.storage.getItem('reviewItems');
-      if (!data || data.length === 0) {
-        const backup = localStorage.getItem('reviewItems_backup');
-        if (backup) {
-          data = JSON.parse(backup);
-          await this.storage.setItem('reviewItems', data);
-        }
-      }
-      if (!data) data = [];
-      this.reviewItems = data.map(item => ({
-        ...item,
-        createdAt: new Date(item.createdAt),
-        nextReview: new Date(item.nextReview),
-        completedReviews: (item.completedReviews || []).map(d => new Date(d))
-      }));
-    } catch (e) {
-      console.error('数据加载失败:', e);
-      this.reviewItems = [];
-    }
-  }
-
-  showSaveStatus(status, message) {
-    const indicator = document.getElementById('saveIndicator');
-    const text = document.getElementById('saveText');
-    indicator.style.display = 'flex';
-    indicator.className = 'save-indicator ' + status;
-    text.textContent = message;
-    if (status === 'saved') {
-      setTimeout(() => { indicator.style.display = 'none'; }, 2000);
-    }
-  }
-
-  // ========== 修改：增加 showGui 参数，支持静默保存 ==========
-  async saveData(showGui = true) {
-    if (this.isSaving) return;
-    this.isSaving = true;
-    
-    if (showGui) this.showSaveStatus('saving', '正在保存...');
-    
-    try {
-      await this.storage.setItem('reviewItems', this.reviewItems);
-      this.backupToLocalStorage();
-      this.hasUnsavedChanges = false;
-      
-      if (showGui) {
-        this.showSaveStatus('saved', '已保存');
-      } else {
-        // 静默保存成功后，隐藏之前的"有未保存内容"提示
-        const indicator = document.getElementById('saveIndicator');
-        if (indicator) indicator.style.display = 'none';
-      }
-      return true;
-    } catch (e) {
-      console.error('保存失败:', e);
-      this.showSaveStatus('error', '保存失败');
-      this.backupToLocalStorage();
-      return false;
-    } finally {
-      this.isSaving = false;
-    }
-  }
-
-  backupToLocalStorage() {
-    try {
-      const data = JSON.stringify(this.reviewItems);
-      localStorage.setItem('reviewItems_backup', data);
-      localStorage.setItem('reviewItems_backup_time', new Date().toISOString());
-    } catch (e) {
-      console.error('LocalStorage备份失败:', e);
-    }
-  }
-
-  initAutoSave() {
-    window.addEventListener('beforeunload', (e) => {
-      if (this.hasUnsavedChanges) {
-        this.saveData();
-        this.backupToLocalStorage();
-      }
-    });
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden && this.hasUnsavedChanges) this.saveData();
-    });
-    // 注意：主添加框的自动保存逻辑保持不变，依然自动保存（添加新卡片时）
-    const editor = document.getElementById('content');
-    if (editor) {
-      const observer = new MutationObserver(() => { this.triggerAutoSave(); });
-      observer.observe(editor, { childList: true, subtree: true, characterData: true });
-    }
-  }
-
-  triggerAutoSave() {
-    this.hasUnsavedChanges = true;
-    this.showSaveStatus('saving', '编辑中...');
-    clearTimeout(this.saveDebounceTimer);
-    this.saveDebounceTimer = setTimeout(() => { this.saveData(); }, 1000);
-  }
-
-  initEventListeners() {
-    document.getElementById('addForm').addEventListener('submit', async e => {
-      e.preventDefault();
-      await this.addItem();
-    });
-    document.addEventListener('keydown', async e => {
-      if (e.ctrlKey && e.key === 's') {
-        e.preventDefault();
-        await this.saveData();
-        this.showNotification('💾 已手动保存');
-      }
-    });
-    document.getElementById('importFile').addEventListener('change', e => this.handleFileImport(e));
-  }
-
-  async addItem() {
-    const title = document.getElementById('title').value.trim();
-    // 将可视化遮挡��转换回 {{c1::内容}} 语法后再保存
-    const content = this.editFormatToCloze(document.getElementById('content').innerHTML.trim());
-    if (!title || !content || content === '<br>') return alert('请填写完整！');
-
-    const item = {
-      id: Date.now(),
-      title,
-      content,
-      createdAt: new Date(),
-      currentInterval: 0,
-      reviewCount: 0,
-      nextReview: new Date(Date.now() + this.reviewIntervals[0] * 24 * 60 * 60 * 1000),
-      completedReviews: [],
-      easeFactor: 2.5,        // 难度系数（动态间隔用）
-      lastIntervalDays: 0     // 上次间隔天数（动态间隔用）
-    };
-    this.reviewItems.push(item);
-    this.hasUnsavedChanges = true;
-    await this.saveData();
-    this.render();
-    this.updateStats();
-    this.updateBellReminder(); 
-    document.getElementById('title').value = '';
-    document.getElementById('content').innerHTML = '';
-    this.showNotification('✅ 已添加并保存');
-  }
-
-  async exportData() {
-    const dataStr = JSON.stringify({
-      exportDate: new Date().toISOString(),
-      version: '7.0',
-      items: this.reviewItems
-    }, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-
-    if ('showSaveFilePicker' in window) {
-      try {
-        let options = {
-          suggestedName: `艾宾浩斯复习数据_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.json`,
-          types: [{ description: 'JSON文件', accept: { 'application/json': ['.json'] } }]
-        };
-        if (this.lastDirectoryHandle) options.startIn = this.lastDirectoryHandle;
-
-        const handle = await window.showSaveFilePicker(options);
-        const writable = await handle.createWritable();
-        await writable.write(blob);
-        await writable.close();
-
-        try {
-          if (handle.requestPermission) {
-            await handle.requestPermission({ mode: 'readwrite' });
-          }
-        } catch (permErr) {
-          console.log('无法请求权限:', permErr);
-        }
-
-        this.showPathHint(`上次保存位置: ${handle.name}`);
-        this.showNotification('📤 导出成功（已记忆位置）');
-      } catch (err) {
-        if (err.name !== 'AbortError') this.exportDataTraditional(blob);
-      }
-    } else {
-      this.exportDataTraditional(blob);
-    }
-  }
-
-  exportDataTraditional(blob) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `艾宾浩斯复习数据_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    this.showNotification('📤 导出成功（传统方式）');
-  }
-
-  async importData() {
-    if ('showOpenFilePicker' in window) {
-      let file = null;
-      let fileHandle = null;
-
-      try {
-        let options = {
-          types: [{ description: 'JSON文件', accept: { 'application/json': ['.json'] } }],
-          multiple: false
-        };
-        if (this.lastDirectoryHandle) {
-          options.startIn = this.lastDirectoryHandle;
-        }
-
-        [fileHandle] = await window.showOpenFilePicker(options);
-        file = await fileHandle.getFile();
-      } catch (err) {
-        if (err.name === 'AbortError') return;
-        console.error('File System Access API 失败:', err);
-        document.getElementById('importFile').click();
-        return;
-      }
-
-      if (file) {
-        try {
-          await this.processImportFile(file);
-        } catch (err) {
-          console.error('文件处理失败:', err);
-        }
-      }
-    } else {
-      document.getElementById('importFile').click();
-    }
-  }
-
-  async processImportFile(file) {
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      if (!data.items || !Array.isArray(data.items)) throw new Error('格式错误');
-
-      const items = data.items.map(i => ({
-        ...i,
-        createdAt: new Date(i.createdAt),
-        nextReview: new Date(i.nextReview),
-        completedReviews: (i.completedReviews || []).map(d => new Date(d))
-      }));
-
-      if (!confirm(`导入 ${items.length} 条数据将覆盖现有内容，确定吗？`)) return;
-
-      this.reviewItems = items;
-      this.hasUnsavedChanges = true;
-      await this.saveData();
-      this.editingId = null;
-      this.render();
-      this.updateStats();
-      this.updateBellReminder(); 
-      this.showNotification(`📥 导入成功：${file.name}`);
-    } catch (err) {
-      alert('导入失败：' + err.message);
-      throw err;
-    }
-  }
-
-  async handleFileImport(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      await this.processImportFile(file);
-    } catch (err) {
-      console.error('传统方式导入失败:', err);
-    }
-    e.target.value = '';
-  }
-
-  // ========== 修改：移除自动保存倒计时 ==========
-  startEdit(id) {
-    if (this.editingId && this.editingId !== id) this.saveEdit(this.editingId);
-    this.editingId = id;
-    const item = this.reviewItems.find(i => i.id === id);
-    if (!item) return;
-    const card = document.getElementById(`item-${id}`);
-    if (!card) return;
-    card.classList.add('editing');
-    const viewMode = card.querySelector('.view-mode');
-    const editMode = card.querySelector('.edit-mode');
-    if (viewMode && editMode) {
-      viewMode.style.display = 'none';
-      editMode.style.display = 'block';
-      const titleInput = card.querySelector('.edit-title');
-      const editContent = card.querySelector('.edit-rich-content');
-      if (titleInput) titleInput.value = item.title;
-      if (editContent) {
-        // 使用 clozeToEditFormat 转换遮挡语法为可视化格式
-        editContent.innerHTML = this.clozeToEditFormat(item.content);
-        
-        const observer = new MutationObserver(() => {
-          this.hasUnsavedChanges = true;
-          // 只提示，不自动保存，不关闭编辑器
-          this.showSaveStatus('saving', '有未保存内容...'); 
-        });
-        observer.observe(editContent, { childList: true, subtree: true, characterData: true });
-      }
-    }
-  }
-
-  // ========== 修改：使用 false 静默保存 ==========
-  async saveEdit(id) {
-    const card = document.getElementById(`item-${id}`);
-    if (!card) return;
-    const titleInput = card.querySelector('.edit-title');
-    const contentEditor = card.querySelector('.edit-rich-content');
-    const newTitle = titleInput.value.trim();
-    // 将可视化遮挡块转换回 {{c1::内容}} 语法
-    const newContent = this.editFormatToCloze(contentEditor.innerHTML.trim());
-
-    if (!newTitle || !newContent || newContent === '<br>') {
-      alert('标题和内容不能为空！');
-      return;
-    }
-
-    const item = this.reviewItems.find(i => i.id === id);
-    if (item) {
-      item.title = newTitle;
-      item.content = newContent;
-      
-      this.hasUnsavedChanges = true;
-      // 使用静默保存，不弹出顶部"已保存"
-      await this.saveData(false); 
-      
-      this.editingId = null;
-      this.render();
-      this.updateStats();
-      this.showNotification('✏️ 已保存并退出编辑');
-    }
-  }
-
-  cancelEdit(id) {
-    this.editingId = null;
-    const card = document.getElementById(`item-${id}`);
-    if (!card) return;
-    card.classList.remove('editing');
-    const viewMode = card.querySelector('.view-mode');
-    const editMode = card.querySelector('.edit-mode');
-    if (viewMode && editMode) {
-      viewMode.style.display = 'block';
-      editMode.style.display = 'none';
-      // 重新渲染以确保数据回滚（如果在编辑状态下切换幻灯片）
-      this.render();
-    }
-  }
-
-  // ========== 修改：移除自动保存倒计时 ==========
-  formatEditDoc(id, cmd, value = null) {
-    const card = document.getElementById(`item-${id}`);
-    if (!card) return;
-    const editor = card.querySelector('.edit-rich-content');
-    if (editor) {
-      editor.focus();
-      document.execCommand(cmd, false, value);
-      
-      this.hasUnsavedChanges = true;
-      this.showSaveStatus('saving', '格式已修改(未保存)');
-    }
-  }
-
-  async markAsReviewed(id) {
-    // 保留原方法兼容性，默认按"记得"处理
-    return this.rateReview(id, 'good');
-  }
-
-  /**
-   * 复习评分（动态间隔算法，简化版 SuperMemo SM-2）
-   * @param {number} id - 项目ID
-   * @param {string} rating - 评分: forget(忘记) | hard(困难) | good(记得) | easy(简单)
-   */
-  async rateReview(id, rating) {
-    if (this.editingId === id) await this.saveEdit(id);
-    const item = this.reviewItems.find(i => i.id === id);
-    if (!item) return;
-
-    item.reviewCount++;
-    item.completedReviews.push(new Date());
-
-    // 初始化动态间隔相关字段
-    if (item.easeFactor === undefined) item.easeFactor = 2.5;
-    if (item.lastIntervalDays === undefined) item.lastIntervalDays = 0;
-
-    let nextDays = 1;
-    let notificationMsg = '';
-    const maxStage = this.reviewIntervals.length - 1; // 第7阶段
-    const isInDynamicPhase = item.currentInterval >= maxStage;
-
-    switch (rating) {
-      case 'forget':
-        // 忘记：重置回第1阶段，降低难度系数
-        item.currentInterval = 0;
-        item.easeFactor = Math.max(1.3, item.easeFactor - 0.2);
-        nextDays = this.reviewIntervals[0];
-        item.lastIntervalDays = nextDays;
-        notificationMsg = '😰 已重置，明天再复习';
-        break;
-
-      case 'hard':
-        if (isInDynamicPhase) {
-          // 动态阶段：间隔 × 1.2，降低难度系数
-          item.easeFactor = Math.max(1.3, item.easeFactor - 0.15);
-          const baseInterval = item.lastIntervalDays || 60;
-          nextDays = Math.max(1, Math.round(baseInterval * 1.2));
-          item.lastIntervalDays = nextDays;
-        } else {
-          // 固定阶段：间隔减半
-          const nextStageDays = this.reviewIntervals[item.currentInterval + 1];
-          nextDays = Math.max(1, Math.floor(nextStageDays / 2));
-          item.currentInterval++;
-          item.lastIntervalDays = nextDays;
-        }
-        notificationMsg = '😓 加油，保持复习';
-        break;
-
-      case 'good':
-        if (isInDynamicPhase) {
-          // 动态阶段：间隔 × easeFactor
-          const baseInterval = item.lastIntervalDays || 60;
-          nextDays = Math.round(baseInterval * item.easeFactor);
-          item.lastIntervalDays = nextDays;
-        } else {
-          // 固定阶段：正常推进
-          item.currentInterval++;
-          nextDays = this.reviewIntervals[item.currentInterval];
-          item.lastIntervalDays = nextDays;
-        }
-        notificationMsg = '😊 复习完成！';
-        break;
-
-      case 'easy':
-        // 提升难度系数
-        item.easeFactor = Math.min(3.0, item.easeFactor + 0.1);
-
-        if (isInDynamicPhase) {
-          // 动态阶段：间隔 × easeFactor × 1.3（额外加速）
-          const baseInterval = item.lastIntervalDays || 60;
-          nextDays = Math.round(baseInterval * item.easeFactor * 1.3);
-          item.lastIntervalDays = nextDays;
-        } else {
-          // 固定阶段：跳级推进（+2）
-          if (item.currentInterval < maxStage - 1) {
-            item.currentInterval += 2;
-          } else {
-            item.currentInterval = maxStage;
-          }
-          nextDays = this.reviewIntervals[item.currentInterval];
-          item.lastIntervalDays = nextDays;
-        }
-        notificationMsg = '😎 太棒了！';
-        break;
-    }
-
-    item.nextReview = new Date(Date.now() + nextDays * 24 * 60 * 60 * 1000);
-    this.hasUnsavedChanges = true;
-    await this.saveData();
-    this.render();
-    this.updateStats();
-    this.updateBellReminder();
-    this.showNotification(`${notificationMsg} (${nextDays}天后)`);
-  }
-
-  async deleteItem(id) {
-    if (this.editingId === id) {
-      if (!confirm('正在编辑中，确定要删除吗？')) return;
-    } else {
-      if (!confirm('确定删除？')) return;
-    }
-    this.editingId = null;
-    this.reviewItems = this.reviewItems.filter(i => i.id !== id);
-    this.hasUnsavedChanges = true;
-    await this.saveData();
-    this.render();
-    this.updateStats();
-    this.updateBellReminder(); 
-    this.showNotification('🗑️ 已删除');
   }
 
   categorizeItems() {
@@ -1130,56 +1002,35 @@ class EbbinghausReviewSystem {
     this.renderCat('futureItems', c.future, 'future');
   }
 
-  // ========== 新增：切换卡片 ==========
-// ========== 优化后：局部刷新的 changeSlide ==========
   changeSlide(sectionId, delta) {
-    // 1. 更新当前板块的页码索引
     if (this.slideState[sectionId] === undefined) this.slideState[sectionId] = 0;
     this.slideState[sectionId] += delta;
-
-    // 2. 获取最新的数据分类
     const c = this.categorizeItems();
-
-    // 3. 关键修改：只渲染当前操作的这一个板块 (sectionId)
-    // 之前的代码在这里调用了 this.render()，导致了全局刷新
     switch (sectionId) {
-      case 'urgentItems':
-        this.renderCat('urgentItems', c.urgent, 'urgent');
-        break;
-      case 'todayItems':
-        this.renderCat('todayItems', c.today, 'due-soon');
-        break;
-      case 'upcomingItems':
-        this.renderCat('upcomingItems', c.upcoming, 'due-soon');
-        break;
-      case 'futureItems':
-        this.renderCat('futureItems', c.future, 'future');
-        break;
+      case 'urgentItems': this.renderCat('urgentItems', c.urgent, 'urgent'); break;
+      case 'todayItems': this.renderCat('todayItems', c.today, 'due-soon'); break;
+      case 'upcomingItems': this.renderCat('upcomingItems', c.upcoming, 'due-soon'); break;
+      case 'futureItems': this.renderCat('futureItems', c.future, 'future'); break;
     }
   }
 
-  // ========== 修改：卡片式渲染逻辑 ==========
   renderCat(elementId, items, cls) {
     const box = document.getElementById(elementId);
-    
     if (!items.length) {
       box.innerHTML = `<div class="empty-state"><span style="font-size:2em">🎉</span><p>暂无内容</p></div>`;
       this.slideState[elementId] = 0;
       return;
     }
 
-    // 索引修正
     let currentIndex = this.slideState[elementId] || 0;
     if (currentIndex >= items.length) currentIndex = items.length - 1;
     if (currentIndex < 0) currentIndex = 0;
-    this.slideState[elementId] = currentIndex; 
+    this.slideState[elementId] = currentIndex;
 
     const currentItem = items[currentIndex];
-
     const isFirst = currentIndex === 0;
     const isLast = currentIndex === items.length - 1;
-    
-    // 导航栏HTML
+
     const controlsHTML = `
       <div class="card-controls ${cls}">
         <button class="nav-btn" onclick="reviewSystem.changeSlide('${elementId}', -1)" ${isFirst ? 'disabled' : ''} title="上一张">❮</button>
@@ -1188,10 +1039,7 @@ class EbbinghausReviewSystem {
       </div>
     `;
 
-    // 将 card-view-item 类添加到 itemHTML 中
-    const itemHTMLContent = this.itemHTML(currentItem, cls + ' card-view-item');
-
-    box.innerHTML = controlsHTML + itemHTMLContent;
+    box.innerHTML = controlsHTML + this.itemHTML(currentItem, cls + ' card-view-item');
   }
 
   itemHTML(item, cls) {
@@ -1202,6 +1050,7 @@ class EbbinghausReviewSystem {
       else if (idx === item.currentInterval) c += ' current';
       return `<div class="${c}"></div>`;
     }).join('');
+
     return `
       <div class="review-item ${cls} ${isEditing ? 'editing' : ''}" id="item-${item.id}">
         <div class="view-mode" style="${isEditing ? 'display:none' : 'display:block'}">
@@ -1243,33 +1092,16 @@ class EbbinghausReviewSystem {
                 <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'underline')"><u>U</u></button>
                 <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'strikeThrough')"><s>S</s></button>
                 <div class="toolbar-divider"></div>
-                <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'insertUnorderedList')">• 列表</button>
-                <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'insertOrderedList')">1. 列表</button>
-                <div class="toolbar-divider"></div>
-                <div class="color-picker" style="transform:scale(0.9);">
-                  <button type="button" class="color-btn" style="background:#ff0000" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#ff0000')"></button>
-                  <button type="button" class="color-btn" style="background:#ffa500" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#ffa500')"></button>
-                  <button type="button" class="color-btn" style="background:#ffff00" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#ffff00')"></button>
-                  <button type="button" class="color-btn" style="background:#008000" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#008000')"></button>
-                  <button type="button" class="color-btn" style="background:#00ffff" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#00ffff')"></button>
-                  <button type="button" class="color-btn" style="background:#0000ff" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#0000ff')"></button>
-                  <button type="button" class="color-btn" style="background:#800080" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#800080')"></button>
-                  <button type="button" class="color-btn" style="background:#000000" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#000000')"></button>
-                  <button type="button" class="color-btn" style="background:#ffffff" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#ffffff')"></button>
-                </div>
-                <div class="toolbar-divider"></div>
                 <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'removeFormat')">🧹</button>
                 <button type="button" onclick="removeEditCloze(${item.id})" title="清除遮挡">🔓</button>
-                <div class="toolbar-divider"></div>
-                <button type="button" onclick="addEditCloze(${item.id})" title="添加遮挡 (选中文字后点击)">🔒 遮挡</button>
+                <button type="button" onclick="addEditCloze(${item.id})" title="添加遮挡">🔒 遮挡</button>
               </div>
               <div class="edit-rich-content editor-content" contenteditable="true" style="min-height:100px;">${this.clozeToEditFormat(item.content)}</div>
             </div>
           </div>
-          <div style="font-size:0.9em;color:#6c757d;margin-bottom:10px;">💡 请点击右下角保存按钮提交修改</div>
           <div class="edit-actions">
             <button class="btn btn-small btn-cancel" onclick="reviewSystem.cancelEdit(${item.id})">❌ 取消</button>
-            <button class="btn btn-small btn-success" onclick="reviewSystem.saveEdit(${item.id})">💾 立即保存</button>
+            <button class="btn btn-small btn-success" onclick="reviewSystem.saveEdit(${item.id})">💾 保存</button>
           </div>
         </div>
       </div>`;
@@ -1281,45 +1113,35 @@ class EbbinghausReviewSystem {
     return div.innerHTML;
   }
 
-  // 解析完形填空遮挡语法 {{c1::内容}} → [点击显示]
   parseCloze(content) {
     return content.replace(/\{\{c(\d+)::([\s\S]*?)\}\}/g, (match, num, text) => {
-      // 使用 encodeURIComponent 编码 HTML 内容，安全存储到属性中
       const encoded = encodeURIComponent(text);
-      // 点击后移除所有样式，只显示原始内容
       return `<span class="cloze" data-content="${encoded}" onclick="this.className='';this.innerHTML=decodeURIComponent(this.dataset.content)">[点击显示]</span>`;
     });
   }
 
-  // 编辑模式：将 {{c1::内容}} 转换为可视化遮挡块
   clozeToEditFormat(content) {
     return content.replace(/\{\{c(\d+)::([\s\S]*?)\}\}/g, (match, num, text) => {
-      // 不设置 contenteditable，因为父元素已经是 contenteditable
       return `<span class="cloze-edit" data-cloze-num="${num}">${text}</span>`;
     });
   }
 
-  // 保存时：将可视化遮挡块转换回 {{c1::内容}} 语法
-  // 使用层级匹配处理嵌套的 span 标签
   editFormatToCloze(content) {
     let result = content;
     let changed = true;
 
     while (changed) {
       changed = false;
-      // 查找 <span class="cloze-edit" 开始的位置
       const startMatch = result.match(/<span([^>]*)class="cloze-edit"([^>]*)>/i);
       if (!startMatch) break;
 
       const startIndex = startMatch.index;
       const afterStart = startIndex + startMatch[0].length;
 
-      // 从开始标签后，找到匹配的结束 </span>，考虑嵌套层级
       let depth = 1;
       let endIndex = afterStart;
       let lastEnd = afterStart;
       const rest = result.substring(afterStart);
-
       const tagRegex = /<\/?span[^>]*>/gi;
       let match;
 
@@ -1373,39 +1195,6 @@ class EbbinghausReviewSystem {
     }
     return streak;
   }
-
-  async clearAllData() {
-    if (this.editingId) {
-      if (!confirm('正在编辑中，确定要清空所有数据吗？')) return;
-    }
-    if (!confirm('⚠️ 清空后不可恢复，确定吗？')) return;
-    if (!confirm('再次确认：真的要清空？')) return;
-    this.reviewItems = [];
-    this.editingId = null;
-    this.hasUnsavedChanges = true;
-    await this.saveData();
-    localStorage.removeItem('reviewItems_backup');
-    localStorage.removeItem('reviewItems_backup_time');
-    this.lastDirectoryHandle = null;
-    await this.storage.setItem('lastDirectoryHandle', null);
-    this.render();
-    this.updateStats();
-    this.updateBellReminder(); 
-    this.showNotification('🗑️ 已清空');
-  }
-
-  showNotification(msg) {
-    const n = document.createElement('div');
-    n.style.cssText = `position:fixed;top:20px;right:20px;background:#51cf66;color:#fff;padding:12px 20px;border-radius:8px;font-weight:600;z-index:1000;animation:slideIn 0.3s ease`;
-    n.textContent = msg;
-    document.body.appendChild(n);
-    setTimeout(() => {
-      n.style.opacity = '0';
-      n.style.transform = 'translateX(100%)';
-      n.style.transition = 'all 0.3s';
-      setTimeout(() => n.remove(), 300);
-    }, 3000);
-  }
 }
 
 document.addEventListener('keydown', (e) => {
@@ -1421,7 +1210,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 const reviewSystem = new EbbinghausReviewSystem();
-reviewSystem.init().then(() => console.log('✅ V7 卡片专注版启动'));
+reviewSystem.init().then(() => console.log('✅ V7 Supabase 版启动'));
   </script>
 
   <style>
