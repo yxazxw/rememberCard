@@ -2,100 +2,332 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8"/>
-<title>复习提醒系统（V7 Supabase 云同步版）</title>
+<title>复习提醒系统（V14 多端实时同步版）</title>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  html{overflow-x:hidden}
-  body{font-family:"Microsoft YaHei",Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px;overflow-x:hidden}
-  .container{max-width:1000px;width:100%;margin:0 auto;background:#fff;border-radius:15px;box-shadow:0 20px 40px rgba(0,0,0,.1);overflow:hidden}
-
-  /* Header */
-  .header{
-    background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);
-    color:#fff;
-    padding:30px;
-    text-align:center;
-    position:relative;
-  }
-  .header h1{font-size:2.2em;font-weight:300;margin-bottom:10px}
-  .header p{opacity:.9;font-size:1.1em}
-
-  /* 铃铛提醒 */
-  .bell-reminder{
-    position:absolute;
-    top:20px;
-    left:20px;
-    display:flex;
-    align-items:center;
-    gap:8px;
-    background:rgba(255,255,255,0.2);
-    backdrop-filter:blur(10px);
-    padding:8px 16px;
-    border-radius:30px;
-    border:1px solid rgba(255,255,255,0.3);
-    cursor:pointer;
-    transition:all .3s;
-    text-decoration:none;
-    color:#fff;
-  }
-  .bell-reminder:hover{
-    background:rgba(255,255,255,0.3);
-    transform:translateY(-2px);
-    box-shadow:0 4px 12px rgba(0,0,0,0.1);
-  }
-  .bell-icon{
-    font-size:24px;
-    position:relative;
-    animation:swing 2s ease-in-out infinite;
-    transform-origin:top center;
-  }
-  @keyframes swing{
-    0%,100%{transform:rotate(0deg)}
-    10%,30%{transform:rotate(10deg)}
-    20%,40%{transform:rotate(-10deg)}
-    50%{transform:rotate(0deg)}
-  }
-  .bell-count{
-    background:#ffd700;
-    color:#333;
-    font-weight:bold;
-    font-size:14px;
-    min-width:24px;
-    height:24px;
-    border-radius:12px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:0 6px;
-    box-shadow:0 2px 8px rgba(0,0,0,0.2);
-    border:2px solid #fff;
-  }
-  .bell-count.zero{
-    background:#90EE90;
-    color:#2d5016;
-  }
-  .bell-count.urgent{
-    background:#ff4444;
-    color:#fff;
-    animation:pulse 1.5s infinite;
-  }
-  @keyframes pulse{
-    0%,100%{transform:scale(1)}
-    50%{transform:scale(1.1)}
-  }
-  .bell-text{
-    font-size:13px;
-    font-weight:500;
-    opacity:0.95;
+  :root {
+    --primary-color: #764ba2;
+    --sidebar-bg: #f3f2f1;
+    --active-bg: #ffffff;
+    --text-main: #323130;
+    --danger-color: #d83b01;
+    /* 恢复淡蓝色背景 */
+    --content-bg: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
   }
 
-  .main-content{padding:30px;width:100%;box-sizing:border-box;overflow:hidden;display:flex;flex-direction:column}
-  .add-section{background:#f8f9fa;border:1px solid #e9ecef;border-left:5px solid #4facfe;border-radius:10px;padding:20px;margin-bottom:30px;width:100%;box-sizing:border-box}
-  .form-group{margin-bottom:20px}
-  .form-group label{display:block;margin-bottom:8px;font-weight:600;color:#495057}
-  .form-group input{width:100%;padding:12px 15px;border:2px solid #e9ecef;border-radius:8px;font-size:16px;transition:border-color .3s}
-  .form-group input:focus{outline:none;border-color:#4facfe}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    background: #faf9f8;
+    height: 100vh;
+    overflow: hidden; /* 关键：禁止全局滚动 */
+    display: flex;
+  }
+
+  /* ========== 根布局 ========== */
+  .app-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ========== 左侧边栏 ========== */
+  .sidebar {
+    width: 260px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid #edebe9;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    z-index: 100;
+  }
+
+  .sidebar-header {
+    padding: 25px 20px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--primary-color);
+  }
+
+  .page-list {
+    flex: 1;
+    overflow-y: auto; /* 分页列表独立滚动 */
+    padding: 5px 0;
+  }
+
+  .page-item {
+    padding: 10px 20px;
+    margin: 2px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #444;
+    transition: 0.2s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .page-item:hover { background: #ebebeb; }
+  .page-item.active {
+    background: var(--active-bg);
+    color: var(--primary-color);
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  .page-item-icon { font-size: 16px; }
+
+  .page-rename-input {
+    border: none;
+    background: transparent;
+    font-size: inherit;
+    font-weight: inherit;
+    color: inherit;
+    width: 100%;
+    outline: none;
+    padding: 0;
+    border-bottom: 2px solid var(--primary-color);
+  }
+
+  /* 底部管理按钮组 */
+  .sidebar-footer {
+    padding: 15px;
+    border-top: 1px solid #edebe9;
+  }
+
+  .footer-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .footer-btn {
+    flex: 3;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 20px;
+    color: var(--primary-color);
+    transition: 0.2s;
+    position: relative;
+  }
+
+  .footer-btn:hover {
+    background: #f9f9f9;
+    border-color: var(--primary-color);
+  }
+
+  .footer-btn.delete:hover {
+    color: var(--danger-color);
+    border-color: var(--danger-color);
+  }
+
+  /* 齿轮按钮样式 */
+  .footer-btn.gear-wrapper {
+    flex: 1;
+    position: relative;
+  }
+
+  .footer-btn.gear-wrapper:hover {
+    border-color: #6c757d;
+  }
+
+  .gear-icon {
+    font-size: 18px;
+  }
+
+  /* 齿轮下拉菜单 */
+  .gear-menu {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff;
+    border: 1px solid #edebe9;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    min-width: 130px;
+    z-index: 1000;
+    margin-bottom: 5px;
+    overflow: hidden;
+  }
+
+  .gear-menu.show {
+    display: block;
+  }
+
+  .gear-menu-item {
+    padding: 10px 15px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-main);
+    transition: background 0.2s;
+  }
+
+  .gear-menu-item:hover {
+    background: #f3f2f1;
+  }
+
+  .gear-menu-item:first-child {
+    border-bottom: 1px solid #edebe9;
+  }
+
+  /* ========== 右键菜单 ========== */
+  .context-menu {
+    position: fixed;
+    background: white;
+    border: 1px solid #edebe9;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border-radius: 6px;
+    padding: 5px 0;
+    display: none;
+    z-index: 2000;
+    min-width: 150px;
+  }
+
+  .context-menu-item {
+    padding: 10px 15px;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-main);
+  }
+
+  .context-menu-item:hover { background: #f3f2f1; }
+  .context-menu-item.danger { color: var(--danger-color); }
+
+  /* ========== 右侧主内容区 ========== */
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--content-bg);
+    position: relative;
+    min-width: 0; /* 防止内容撑开 */
+  }
+
+  .main-header {
+    padding: 20px 30px;
+    border-bottom: 1px solid #edebe9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .header-left { display: flex; align-items: center; gap: 15px; }
+  .header-left h1 { font-size: 1.4em; font-weight: 600; margin: 0; color: var(--text-main); }
+  .header-right { display: flex; align-items: center; gap: 15px; }
+
+  .scroll-area {
+    flex: 1;
+    overflow-y: auto; /* 内容区独立滚动 */
+    padding: 20px 30px;
+  }
+
+  .content-inner {
+    max-width: 1000px;
+    width: 100%;
+    margin: 0 auto;
+    box-sizing: border-box;
+  }
+
+  /* ========== 铃铛提醒 ========== */
+  .bell-reminder {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f3f2f1;
+    padding: 8px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    color: var(--text-main);
+    font-size: 14px;
+  }
+
+  .bell-reminder:hover {
+    background: #edebe9;
+    transform: translateY(-1px);
+  }
+
+  .bell-icon {
+    font-size: 18px;
+    animation: swing 2s ease-in-out infinite;
+    transform-origin: top center;
+  }
+
+  @keyframes swing {
+    0%, 100% { transform: rotate(0deg); }
+    10%, 30% { transform: rotate(10deg); }
+    20%, 40% { transform: rotate(-10deg); }
+    50% { transform: rotate(0deg); }
+  }
+
+  .bell-count {
+    background: #ffd700;
+    color: #333;
+    font-weight: bold;
+    font-size: 12px;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+  }
+
+  .bell-count.zero { background: #90EE90; color: #2d5016; }
+  .bell-count.urgent { background: #ff4444; color: #fff; animation: pulse 1.5s infinite; }
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  .bell-text { font-size: 12px; font-weight: 500; }
+
+  /* ========== 表单和按钮 ========== */
+  .add-section {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-left: 5px solid #4facfe;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .form-group { margin-bottom: 20px; }
+  .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #495057; }
+  .form-group input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+  }
+  .form-group input:focus { outline: none; border-color: #4facfe; }
 
   /* 富文本编辑器 */
   .rich-editor{border:2px solid #e9ecef;border-radius:8px;overflow:hidden;transition:border-color .3s;background:#fff;max-width:100%}
@@ -147,10 +379,12 @@
   .review-item:hover{transform:translateY(-3px);box-shadow:0 8px 25px rgba(0,0,0,.1)}
   .review-item.urgent{border-left:5px solid #ff6b6b;background:linear-gradient(90deg,#fff5f5 0%,#fff 10%)}
   .review-item.due-soon{border-left:5px solid #ffa500;background:linear-gradient(90deg,#fff8e1 0%,#fff 10%)}
+  .review-item.upcoming{border-left:5px solid #f59e0b;background:linear-gradient(90deg,#fffbeb 0%,#fff 10%)}
   .review-item.future{border-left:5px solid #51cf66;background:linear-gradient(90deg,#f0fff4 0%,#fff 10%)}
   /* 卡片视图下移除圆角和上边框，保留左边框颜色 */
   .review-item.card-view-item.urgent{border-left:5px solid #ff6b6b}
   .review-item.card-view-item.due-soon{border-left:5px solid #ffa500}
+  .review-item.card-view-item.upcoming{border-left:5px solid #f59e0b}
   .review-item.card-view-item.future{border-left:5px solid #51cf66}
   .review-item.editing{border:2px solid #4facfe;box-shadow:0 0 0 4px rgba(79,172,254,.1)}
 
@@ -173,6 +407,7 @@
   }
   .card-controls.urgent { border-left-color: #ff6b6b; }
   .card-controls.due-soon { border-left-color: #ffa500; }
+  .card-controls.upcoming { border-left-color: #f59e0b; }
   .card-controls.future { border-left-color: #51cf66; }
   .nav-btn {
     background: #fff;
@@ -259,22 +494,91 @@
   .backup-notice{background:linear-gradient(135deg,#d4edda 0%,#c3e6cb 100%);border:1px solid #28a745;border-radius:8px;padding:15px;margin-bottom:20px;font-size:.9em;color:#155724}
   .backup-notice strong{display:block;margin-bottom:5px}
 
-  /* 连接状态 */
-  .connection-status{display:flex;align-items:center;gap:8px;font-size:0.9em;margin-top:10px}
-  .status-dot{width:10px;height:10px;border-radius:50%;animation:blink 1.5s infinite}
-  .status-dot.connected{background:#28a745}
-  .status-dot.disconnected{background:#dc3545}
-  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.5}
-
   html{scroll-behavior:smooth}
 
+  /* ========== 分页标签栏样式（已废弃，保留以防引用错误） ========== */
+  .page-tabs{display:none}
+  .tabs-container{display:none}
+  .page-tab{display:none}
+  .page-tab-name{display:none}
+  .page-tab-name-input{display:none}
+  .page-tab-delete{display:none}
+  .add-page-btn{display:none}
+
+  /* ========== 确认弹窗样式 ========== */
+  .confirm-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    animation: fadeIn 0.2s ease;
+  }
+  .confirm-modal.show {
+    display: flex;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .confirm-modal .modal-content {
+    background: #fff;
+    padding: 30px;
+    border-radius: 15px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  .confirm-modal .modal-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+  }
+  .confirm-modal .modal-title {
+    font-size: 1.3em;
+    font-weight: 600;
+    color: #343a40;
+    margin-bottom: 10px;
+  }
+  .confirm-modal .modal-message {
+    color: #6c757d;
+    margin-bottom: 25px;
+    line-height: 1.6;
+  }
+  .confirm-modal .modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+  .confirm-modal .btn {
+    min-width: 100px;
+  }
+
   @media(max-width:768px){
-    .bell-reminder{top:10px;left:10px;padding:6px 12px}
-    .bell-text{display:none}
-    .header h1{font-size:1.8em}
+    .sidebar{position:fixed;left:-240px;height:100%;z-index:100;transition:left .3s}
+    .sidebar.open{left:0}
+    .menu-toggle{display:block;position:absolute;top:15px;left:15px;width:36px;height:36px;border:none;background:#f3f2f1;border-radius:4px;cursor:pointer;font-size:18px;z-index:50}
+    .menu-toggle:hover{background:#edebe9}
+    .main-content{width:100%}
+    .header h1{font-size:1.2em}
+    .header{padding:15px 20px}
+    .content-inner{padding:15px}
     .item-header{width:100%}
     .item-actions{justify-content:flex-start}
     .stats{grid-template-columns:repeat(2,1fr)}
+  }
+  @media(min-width:769px){
+    .menu-toggle{display:none}
   }
 </style>
 <base target="_blank">
@@ -285,116 +589,157 @@
     <span id="saveText">已同步</span>
   </div>
 
-  <div class="container">
-    <div class="header">
-      <a href="#today-review-anchor" class="bell-reminder" id="bellReminder" title="点击查看今日复习">
-        <span class="bell-icon">🔔</span>
-        <span class="bell-count" id="bellCount">0</span>
-        <span class="bell-text">待复习</span>
-      </a>
-
-      <h1>复习提醒系统</h1>
-      <p>基于科学记忆曲线的智能复习安排（Supabase 云同步版）</p>
+  <div class="app-container">
+    <!-- 左侧边栏 -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">复习系统</div>
+      <div id="pageList" class="page-list"></div>
+      <div class="sidebar-footer">
+        <div class="footer-row">
+          <button class="footer-btn add" onclick="reviewSystem.createPage()" title="新建分区">+</button>
+          <button class="footer-btn delete" onclick="reviewSystem.deleteCurrentPage()" title="删除当前分区">−</button>
+          <div class="footer-btn gear-wrapper" title="系统备份" onclick="reviewSystem.toggleGearMenu(event)">
+            <span class="gear-icon">⚙️</span>
+            <div class="gear-menu" id="gearMenu">
+              <div class="gear-menu-item" onclick="event.stopPropagation(); reviewSystem.syncRefresh(); reviewSystem.toggleGearMenu(event);">
+                <span>🔄</span> 同步刷新
+              </div>
+              <div class="gear-menu-item" onclick="event.stopPropagation(); reviewSystem.exportFullBackup(); reviewSystem.toggleGearMenu(event);">
+                <span>📤</span> 导出总备份
+              </div>
+              <div class="gear-menu-item" onclick="event.stopPropagation(); reviewSystem.importFullBackup(); reviewSystem.toggleGearMenu(event);">
+                <span>📥</span> 导入总备份
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
+    <!-- 右侧主内容 -->
     <div class="main-content">
-      <div class="backup-notice">
-        <strong>☁️ Supabase 云同步已启用</strong>
-        • 数据自动同步到云端 • 支持跨设备访问 • 本地保留备份<br>
-        <div class="connection-status">
-          <span class="status-dot" id="statusDot"></span>
-          <span id="statusText">正在连接...</span>
+      <div class="main-header">
+        <div class="header-left">
+          <h1 id="currentPageTitle">复习提醒</h1>
+        </div>
+        <div class="header-right">
+          <a href="#today-review-anchor" class="bell-reminder" id="bellReminder" title="点击查看今日复习">
+            <span class="bell-icon">🔔</span>
+            <span class="bell-count" id="bellCount">0</span>
+            <span class="bell-text">待复习</span>
+          </a>
         </div>
       </div>
 
-      <div class="stats">
-        <div class="stat-item"><div class="stat-number" id="totalItems">0</div><div class="stat-label">总学习项目</div></div>
-        <div class="stat-item"><div class="stat-number" id="dueToday">0</div><div class="stat-label">今日待复习</div></div>
-        <div class="stat-item"><div class="stat-number" id="completedToday">0</div><div class="stat-label">今日已完成</div></div>
-        <div class="stat-item"><div class="stat-number" id="streakDays">0</div><div class="stat-label">连续学习天数</div></div>
-      </div>
-
-      <div class="add-section">
-        <h3 style="margin-bottom:20px;color:#495057">📚 添加新的学习内容</h3>
-        <form id="addForm">
-          <div class="form-group">
-            <label for="title">标题</label>
-            <input type="text" id="title" placeholder="例如：知识点 - C++相关" required/>
-          </div>
-
-          <div class="form-group">
-            <label>学习内容</label>
-            <div class="rich-editor">
-              <div class="editor-toolbar">
-                <button type="button" onclick="formatDoc('bold')" title="加粗"><b>B</b></button>
-                <button type="button" onclick="formatDoc('italic')" title="斜体"><i>I</i></button>
-                <button type="button" onclick="formatDoc('underline')" title="下划线"><u>U</u></button>
-                <button type="button" onclick="formatDoc('strikeThrough')" title="删除线"><s>S</s></button>
-                <div class="toolbar-divider"></div>
-                <button type="button" onclick="formatDoc('insertUnorderedList')" title="无序列表">• 列表</button>
-                <button type="button" onclick="formatDoc('insertOrderedList')" title="有序列表">1. 列表</button>
-                <div class="toolbar-divider"></div>
-
-                <div class="color-picker" title="文字颜色">
-                  <button type="button" class="color-btn" style="background:#ff0000" onclick="formatDoc('foreColor', '#ff0000')" title="红色"></button>
-                  <button type="button" class="color-btn" style="background:#ffa500" onclick="formatDoc('foreColor', '#ffa500')" title="橙色"></button>
-                  <button type="button" class="color-btn" style="background:#ffff00" onclick="formatDoc('foreColor', '#ffff00')" title="黄色"></button>
-                  <button type="button" class="color-btn" style="background:#008000" onclick="formatDoc('foreColor', '#008000')" title="绿色"></button>
-                  <button type="button" class="color-btn" style="background:#00ffff" onclick="formatDoc('foreColor', '#00ffff')" title="青色"></button>
-                  <button type="button" class="color-btn" style="background:#0000ff" onclick="formatDoc('foreColor', '#0000ff')" title="蓝色"></button>
-                  <button type="button" class="color-btn" style="background:#800080" onclick="formatDoc('foreColor', '#800080')" title="紫色"></button>
-                  <button type="button" class="color-btn" style="background:#000000" onclick="formatDoc('foreColor', '#000000')" title="黑色"></button>
-                  <button type="button" class="color-btn" style="background:#ffffff" onclick="formatDoc('foreColor', '#ffffff')" title="白色"></button>
-                </div>
-                <div class="toolbar-divider"></div>
-                <button type="button" onclick="formatDoc('removeFormat')" title="清除格式">🧹</button>
-                <button type="button" onclick="removeCloze()" title="清除遮挡">🔓</button>
-                <div class="toolbar-divider"></div>
-                <button type="button" onclick="addCloze()" title="添加遮挡 (选中文字后点击)">🔒 遮挡</button>
+      <!-- 可滚动内容区 -->
+      <div class="scroll-area" id="mainScroll">
+        <div class="content-inner">
+          <!-- 确认弹窗 -->
+          <div class="confirm-modal" id="confirmModal">
+            <div class="modal-content">
+              <div class="modal-icon" id="modalIcon">⚠️</div>
+              <div class="modal-title" id="modalTitle">确认操作</div>
+              <div class="modal-message" id="modalMessage">确定要执行此操作吗？</div>
+              <div class="modal-actions">
+                <button class="btn btn-cancel" id="modalCancelBtn">取消</button>
+                <button class="btn btn-danger" id="modalConfirmBtn">确认</button>
               </div>
-              <div id="content" class="editor-content" contenteditable="true" placeholder="详细的学习内容...支持富文本格式和颜色，使用 {{c1::内容}} 添加遮挡"></div>
             </div>
           </div>
 
-          <button type="submit" class="btn">添加到复习计划</button>
-        </form>
-
-        <div style="margin-top:25px;padding-top:25px;border-top:1px solid #dee2e6">
-          <h4 style="margin-bottom:15px;color:#495057">💾 数据管理</h4>
-          <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="btn btn-small" onclick="reviewSystem.exportData()">📤 导出备份</button>
-            <button class="btn btn-small" onclick="reviewSystem.importData()">📥 导入数据</button>
-            <button class="btn btn-small btn-danger" onclick="reviewSystem.clearAllData()">🗑️ 清空所有数据</button>
+          <div class="stats">
+            <div class="stat-item"><div class="stat-number" id="totalItems">0</div><div class="stat-label">总学习项目</div></div>
+            <div class="stat-item"><div class="stat-number" id="dueToday">0</div><div class="stat-label">今日待复习</div></div>
+            <div class="stat-item"><div class="stat-number" id="completedToday">0</div><div class="stat-label">今日已完成</div></div>
+            <div class="stat-item"><div class="stat-number" id="streakDays">0</div><div class="stat-label">连续学习天数</div></div>
           </div>
-          <input type="file" id="importFile" accept=".json" style="display:none"/>
-        </div>
-      </div>
 
-      <div id="today-review-anchor" style="position:relative;top:-20px;"></div>
+          <div class="add-section">
+            <h3 style="margin-bottom:20px;color:#495057">📚 添加新的学习内容</h3>
+            <form id="addForm">
+              <div class="form-group">
+                <label for="title">标题</label>
+                <input type="text" id="title" placeholder="例如：知识点 - C++相关" required/>
+              </div>
 
-      <div class="review-sections">
-        <div class="urgent-section">
-          <h2 class="section-title">🚨 紧急复习 (已过期)</h2>
-          <div id="urgentItems"></div>
-        </div>
+              <div class="form-group">
+                <label>学习内容</label>
+                <div class="rich-editor">
+                  <div class="editor-toolbar">
+                    <button type="button" onclick="formatDoc('bold')" title="加粗"><b>B</b></button>
+                    <button type="button" onclick="formatDoc('italic')" title="斜体"><i>I</i></button>
+                    <button type="button" onclick="formatDoc('underline')" title="下划线"><u>U</u></button>
+                    <button type="button" onclick="formatDoc('strikeThrough')" title="删除线"><s>S</s></button>
+                    <div class="toolbar-divider"></div>
+                    <button type="button" onclick="formatDoc('insertUnorderedList')" title="无序列表">• 列表</button>
+                    <button type="button" onclick="formatDoc('insertOrderedList')" title="有序列表">1. 列表</button>
+                    <div class="toolbar-divider"></div>
 
-        <div class="today-section">
-          <h2 class="section-title" id="todaySectionTitle">📅 今日复习</h2>
-          <div id="todayItems"></div>
-        </div>
+                    <div class="color-picker" title="文字颜色">
+                      <button type="button" class="color-btn" style="background:#ff0000" onclick="formatDoc('foreColor', '#ff0000')" title="红色"></button>
+                      <button type="button" class="color-btn" style="background:#ffa500" onclick="formatDoc('foreColor', '#ffa500')" title="橙色"></button>
+                      <button type="button" class="color-btn" style="background:#ffff00" onclick="formatDoc('foreColor', '#ffff00')" title="黄色"></button>
+                      <button type="button" class="color-btn" style="background:#008000" onclick="formatDoc('foreColor', '#008000')" title="绿色"></button>
+                      <button type="button" class="color-btn" style="background:#00ffff" onclick="formatDoc('foreColor', '#00ffff')" title="青色"></button>
+                      <button type="button" class="color-btn" style="background:#0000ff" onclick="formatDoc('foreColor', '#0000ff')" title="蓝色"></button>
+                      <button type="button" class="color-btn" style="background:#800080" onclick="formatDoc('foreColor', '#800080')" title="紫色"></button>
+                      <button type="button" class="color-btn" style="background:#000000" onclick="formatDoc('foreColor', '#000000')" title="黑色"></button>
+                      <button type="button" class="color-btn" style="background:#ffffff" onclick="formatDoc('foreColor', '#ffffff')" title="白色"></button>
+                    </div>
+                    <div class="toolbar-divider"></div>
+                    <button type="button" onclick="formatDoc('removeFormat')" title="清除格式">🧹</button>
+                    <button type="button" onclick="removeCloze()" title="清除遮挡">🔓</button>
+                    <div class="toolbar-divider"></div>
+                    <button type="button" onclick="addCloze()" title="添加遮挡 (选中文字后点击)">🔒 遮挡</button>
+                  </div>
+                  <div id="content" class="editor-content" contenteditable="true" placeholder="详细的学习内容...支持富文本格式和颜色，使用 {{c1::内容}} 添加遮挡"></div>
+                </div>
+              </div>
 
-        <div class="upcoming-section">
-          <h2 class="section-title">⏰ 即将到期 (3天内)</h2>
-          <div id="upcomingItems"></div>
-        </div>
+              <button type="submit" class="btn">添加到复习计划</button>
+            </form>
 
-        <div class="future-section">
-          <h2 class="section-title">📋 未来安排</h2>
-          <div id="futureItems"></div>
+            <div style="margin-top:25px;padding-top:25px;border-top:1px solid #dee2e6">
+              <h4 style="margin-bottom:15px;color:#495057">💾 数据管理</h4>
+              <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <button class="btn btn-small" onclick="reviewSystem.exportData()">📤 导出备份</button>
+                <button class="btn btn-small" onclick="reviewSystem.importData()">📥 导入数据</button>
+                <button class="btn btn-small btn-danger" onclick="reviewSystem.clearAllData()">🗑️ 清空所有数据</button>
+              </div>
+              <input type="file" id="importFile" accept=".json" style="display:none"/>
+            </div>
+          </div>
+
+          <div id="today-review-anchor" style="position:relative;top:-20px;"></div>
+
+          <div class="review-sections">
+            <div class="urgent-section">
+              <h2 class="section-title">🚨 紧急复习 (已过期)</h2>
+              <div id="urgentItems"></div>
+            </div>
+
+            <div class="today-section">
+              <h2 class="section-title" id="todaySectionTitle">📅 今日复习</h2>
+              <div id="todayItems"></div>
+            </div>
+
+            <div class="upcoming-section">
+              <h2 class="section-title">⏰ 即将到期 (3天内)</h2>
+              <div id="upcomingItems"></div>
+            </div>
+
+            <div class="future-section">
+              <h2 class="section-title">📋 未来安排</h2>
+              <div id="futureItems"></div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- 右键菜单 -->
+  <div id="contextMenu" class="context-menu"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
@@ -407,6 +752,7 @@ class SupabaseStorage {
   constructor() {
     this.supabase = null;
     this.tableName = 'review_items';
+    this.pagesTable = 'pages';
   }
 
   async init() {
@@ -421,11 +767,74 @@ class SupabaseStorage {
     console.log('✅ Supabase 连接成功');
   }
 
-  async getAllItems() {
+  // ========== 分页管理方法 ==========
+
+  async getAllPages() {
     const { data, error } = await this.supabase
+      .from(this.pagesTable)
+      .select('*')
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async addPage(name, sortOrder = 0) {
+    const { data, error } = await this.supabase
+      .from(this.pagesTable)
+      .insert([{ name, sort_order: sortOrder }])
+      .select();
+    if (error) throw error;
+    return data?.[0];
+  }
+
+  async updatePage(id, name) {
+    const { error } = await this.supabase
+      .from(this.pagesTable)
+      .update({ name })
+      .eq('id', id);
+    if (error) throw error;
+  }
+
+  async deletePage(id) {
+    // 先删除该分页下的所有项目
+    const { error: itemsError } = await this.supabase
+      .from(this.tableName)
+      .delete()
+      .eq('page_id', id);
+    if (itemsError) throw itemsError;
+
+    // 再删除分页
+    const { error } = await this.supabase
+      .from(this.pagesTable)
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  }
+
+  async reorderPages(pageOrders) {
+    // pageOrders 是 [{id, sort_order}, ...] 格式
+    for (const { id, sort_order } of pageOrders) {
+      const { error } = await this.supabase
+        .from(this.pagesTable)
+        .update({ sort_order })
+        .eq('id', id);
+      if (error) throw error;
+    }
+  }
+
+  // ========== 项目管理方法 ==========
+
+  async getAllItems(pageId = null) {
+    let query = this.supabase
       .from(this.tableName)
       .select('*')
       .order('created_at', { ascending: false });
+
+    if (pageId !== null) {
+      query = query.eq('page_id', pageId);
+    }
+
+    const { data, error } = await query;
     if (error) throw error;
     return data || [];
   }
@@ -444,7 +853,8 @@ class SupabaseStorage {
 
   async updateItem(id, updates) {
     const dbUpdates = this.toDbFormat(updates);
-    dbUpdates.updated_at = new Date().toISOString();
+    delete dbUpdates.id;  // 删除 id，避免更新主键导致错误
+    // 注意：review_items 表没有 updated_at 列，不发送此字段
     const { error } = await this.supabase
       .from(this.tableName)
       .update(dbUpdates)
@@ -460,9 +870,17 @@ class SupabaseStorage {
     if (error) throw error;
   }
 
-  async clearAll() {
+  async clearAllItems() {
     const { error } = await this.supabase
       .from(this.tableName)
+      .delete()
+      .neq('id', 0);
+    if (error) throw error;
+  }
+
+  async clearAllPages() {
+    const { error } = await this.supabase
+      .from(this.pagesTable)
       .delete()
       .neq('id', 0);
     if (error) throw error;
@@ -480,6 +898,7 @@ class SupabaseStorage {
     if (item.completedReviews !== undefined) dbItem.completed_reviews = item.completedReviews.map(d => new Date(d).toISOString());
     if (item.easeFactor !== undefined) dbItem.ease_factor = item.easeFactor;
     if (item.lastIntervalDays !== undefined) dbItem.last_interval_days = item.lastIntervalDays;
+    if (item.pageId !== undefined) dbItem.page_id = item.pageId;
     return dbItem;
   }
 
@@ -494,7 +913,18 @@ class SupabaseStorage {
       nextReview: new Date(dbItem.next_review),
       completedReviews: (dbItem.completed_reviews || []).map(d => new Date(d)),
       easeFactor: dbItem.ease_factor || 2.5,
-      lastIntervalDays: dbItem.last_interval_days || 0
+      lastIntervalDays: dbItem.last_interval_days || 0,
+      pageId: dbItem.page_id || null
+    };
+  }
+
+  // 分页格式转换
+  fromDbPageFormat(dbPage) {
+    return {
+      id: dbPage.id,
+      name: dbPage.name,
+      createdAt: new Date(dbPage.created_at),
+      sortOrder: dbPage.sort_order || 0
     };
   }
 }
@@ -575,13 +1005,26 @@ class EbbinghausReviewSystem {
     this.editingId = null;
     this.slideState = {};
     this.reviewItems = [];
+
+    // 分页相关状态
+    this.pages = [];
+    this.currentPageId = null;
+    this.draggedPageId = null;
+    this.renamingPageId = null;
+
+    // 确认弹窗回调
+    this._modalConfirmCallback = null;
+    this._modalCancelCallback = null;
   }
 
   async init() {
     try {
       await this.storage.init();
+      await this.loadPages();
       await this.loadData();
       this.initEventListeners();
+      this.setupRealtimeSync();  // 启动实时同步
+      this.renderPageList();
       this.render();
       this.updateStats();
       this.updateBellReminder();
@@ -590,28 +1033,505 @@ class EbbinghausReviewSystem {
     } catch (e) {
       console.error('初始化失败，回退到本地存储:', e);
       this.updateConnectionStatus(false);
+      this.loadLocalPagesBackup();
       this.loadLocalBackup();
       this.initEventListeners();
+      this.renderPageList();
       this.render();
       this.updateStats();
       this.updateBellReminder();
     }
   }
 
-  updateConnectionStatus(connected) {
-    const dot = document.getElementById('statusDot');
-    const text = document.getElementById('statusText');
-    if (connected) {
-      dot.className = 'status-dot connected';
-      text.textContent = '已连接到云端';
-    } else {
-      dot.className = 'status-dot disconnected';
-      text.textContent = '离线模式（本地存储）';
+  // ========== 分页管理方法 ==========
+
+  async loadPages() {
+    const pages = await this.storage.getAllPages();
+    this.pages = pages.map(p => this.storage.fromDbPageFormat(p));
+
+    // 如果没有分页，创建默认分页
+    if (this.pages.length === 0) {
+      const defaultPage = await this.storage.addPage('默认分页', 0);
+      this.pages = [this.storage.fromDbPageFormat(defaultPage)];
+    }
+
+    // 设置当前分页为第一个
+    if (!this.currentPageId && this.pages.length > 0) {
+      this.currentPageId = this.pages[0].id;
+    }
+
+    // 备份到本地
+    this.backupToLocalStorage();
+  }
+
+  async switchPage(pageId) {
+    if (this.editingId) {
+      this.cancelEdit(this.editingId);
+    }
+    this.currentPageId = pageId;
+    this.slideState = {}; // 重置卡片索引状态
+    await this.loadData();
+    this.renderPageList();
+    this.render();
+    this.updateStats();
+    this.updateBellReminder();
+
+    // 移动端自动收起侧边栏
+    if (window.innerWidth <= 768) {
+      document.getElementById('sidebar').classList.remove('open');
     }
   }
 
+  async createPage() {
+    this.showConfirmModal("新建分页", "", async (name) => {
+      try {
+        this.showNotification('正在创建...');
+        const sortOrder = this.pages.length;
+
+        // 核心修复：等待 Supabase 返回包含 ID 的真实对象
+        const newPageData = await this.storage.addPage(name, sortOrder);
+        if (!newPageData) throw new Error("服务器未返回数据");
+
+        const page = this.storage.fromDbPageFormat(newPageData);
+        this.pages.push(page);
+
+        this.renderPageList();
+        await this.switchPage(page.id);
+        this.showNotification('✅ 分页创建成功');
+      } catch (e) {
+        console.error('创建失败:', e);
+        this.showNotification('❌ 创建失败：请检查数据库连接', true);
+      }
+    }, true, "新分页"); // 开启输入模式，默认值"新分页"
+  }
+
+  async deletePage(pageId) {
+    const page = this.pages.find(p => p.id === pageId);
+    if (!page) return;
+
+    // 检查是否是最后一个分页
+    if (this.pages.length <= 1) {
+      this.showNotification('⚠️ 至少需要保留一个分页', true);
+      return;
+    }
+
+    this.showConfirmModal(
+      "确定要删除吗？",
+      `分页「${page.name}」及其下的所有复习内容将被永久删除，不可恢复。`,
+      async () => {
+        try {
+          await this.storage.deletePage(pageId);
+          this.pages = this.pages.filter(p => p.id !== pageId);
+
+          // 如果删除的是当前分页，切换到第一个
+          if (this.currentPageId === pageId) {
+            this.currentPageId = this.pages[0]?.id;
+            await this.loadData();
+          }
+
+          this.renderPageList();
+          this.render();
+          this.updateStats();
+          this.updateBellReminder();
+          this.showNotification('🗑️ 分页已成功删除');
+        } catch (e) {
+          console.error('删除分页失败:', e);
+          this.showNotification('❌ 删除失败', true);
+        }
+      }
+    );
+  }
+
+  startRenamePage(pageId) {
+    this.renamingPageId = pageId;
+    this.renderPageList();
+
+    // 聚焦输入框并选中文字
+    setTimeout(() => {
+      const input = document.querySelector(`[data-page-id="${pageId}"] .page-rename-input`);
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    }, 0);
+  }
+
+  async finishRenamePage(pageId, newName) {
+    if (!newName || !newName.trim()) {
+      this.renamingPageId = null;
+      this.renderPageList();
+      return;
+    }
+
+    const trimmedName = newName.trim();
+    const page = this.pages.find(p => p.id === pageId);
+
+    if (page && page.name !== trimmedName) {
+      try {
+        await this.storage.updatePage(pageId, trimmedName);
+        page.name = trimmedName;
+        this.showNotification('✅ 分页重命名成功');
+      } catch (e) {
+        console.error('重命名失败:', e);
+        this.showNotification('❌ 重命名失败', true);
+      }
+    }
+
+    this.renamingPageId = null;
+    this.renderPageList();
+  }
+
+  // ========== 拖拽排序方法 ==========
+
+  onDragStart(pageId, e) {
+    this.draggedPageId = pageId;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', pageId.toString());
+
+    // 延迟添加拖拽样式，避免立即触发
+    setTimeout(() => {
+      const tab = document.querySelector(`[data-page-id="${pageId}"]`);
+      if (tab) tab.classList.add('dragging');
+    }, 0);
+  }
+
+  onDragEnd(pageId) {
+    const tab = document.querySelector(`[data-page-id="${pageId}"]`);
+    if (tab) tab.classList.remove('dragging');
+    this.draggedPageId = null;
+
+    // 移除所有 drag-over 样式
+    document.querySelectorAll('.page-tab.drag-over').forEach(el => {
+      el.classList.remove('drag-over');
+    });
+  }
+
+  onDragOver(pageId, e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    if (this.draggedPageId && this.draggedPageId !== pageId) {
+      const tab = document.querySelector(`[data-page-id="${pageId}"]`);
+      if (tab) tab.classList.add('drag-over');
+    }
+  }
+
+  onDragLeave(pageId, e) {
+    const tab = document.querySelector(`[data-page-id="${pageId}"]`);
+    if (tab) tab.classList.remove('drag-over');
+  }
+
+  async onDrop(targetPageId, e) {
+    e.preventDefault();
+
+    if (!this.draggedPageId || this.draggedPageId === targetPageId) return;
+
+    // 移除 drag-over 样式
+    const tab = document.querySelector(`[data-page-id="${targetPageId}"]`);
+    if (tab) tab.classList.remove('drag-over');
+
+    // 重新排序
+    const draggedIndex = this.pages.findIndex(p => p.id === this.draggedPageId);
+    const targetIndex = this.pages.findIndex(p => p.id === targetPageId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    // 移动元素
+    const [draggedPage] = this.pages.splice(draggedIndex, 1);
+    this.pages.splice(targetIndex, 0, draggedPage);
+
+    // 更新排序
+    try {
+      const pageOrders = this.pages.map((p, index) => ({
+        id: p.id,
+        sort_order: index
+      }));
+      await this.storage.reorderPages(pageOrders);
+      this.renderPageList();
+      this.showNotification('✅ 分页排序已更新');
+    } catch (e) {
+      console.error('排序更新失败:', e);
+      this.showNotification('❌ 排序更新失败', true);
+    }
+  }
+
+  // ========== 确认弹窗方法 ==========
+
+  showConfirmModal(title, message, onConfirm, isInput = false, defaultValue = "") {
+    const modal = document.getElementById('confirmModal');
+    const msgArea = document.getElementById('modalMessage');
+    const confirmBtn = document.getElementById('modalConfirmBtn');
+
+    document.getElementById('modalTitle').textContent = title;
+
+    if (isInput) {
+      // 输入框模式
+      msgArea.innerHTML = `
+        <input type="text" id="modalInput" class="edit-input"
+               value="${defaultValue}" placeholder="请输入名称..."
+               style="width:100%; margin-top:10px; padding:10px; border:2px solid #4facfe; border-radius:8px; font-size:16px;">`;
+      confirmBtn.textContent = "确认";
+      confirmBtn.className = "btn btn-success";
+      setTimeout(() => document.getElementById('modalInput').focus(), 200);
+    } else {
+      // 普通确认模式
+      msgArea.textContent = message;
+      confirmBtn.textContent = "确认删除";
+      confirmBtn.className = "btn btn-danger";
+    }
+
+    // 保存回调（支持输入值）
+    this._modalConfirmCallback = async () => {
+      const value = isInput ? document.getElementById('modalInput')?.value.trim() : null;
+      if (isInput && !value) return; // 输入模式下不能为空
+      await onConfirm(value);
+    };
+
+    modal.classList.add('show');
+  }
+
+  hideConfirmModal() {
+    const modal = document.getElementById('confirmModal');
+    modal.classList.remove('show');
+    this._modalConfirmCallback = null;
+  }
+
+  onModalConfirm() {
+    const callback = this._modalConfirmCallback;
+    this.hideConfirmModal();
+    if (callback) callback();
+  }
+
+  onModalCancel() {
+    this.hideConfirmModal();
+  }
+
+  // ========== 分页列表渲染（侧边栏） ==========
+
+  renderPageList() {
+    const list = document.getElementById('pageList');
+    if (!list) return;
+
+    // 清空列表
+    list.innerHTML = '';
+
+    if (this.pages.length === 0) {
+      const emptyDiv = document.createElement('div');
+      emptyDiv.style.cssText = 'padding:20px;color:#999;text-align:center;';
+      emptyDiv.textContent = '暂无分区';
+      list.appendChild(emptyDiv);
+      return;
+    }
+
+    // 使用 DOM 元素而非 innerHTML，确保事件绑定正确
+    this.pages.forEach(page => {
+      const isActive = page.id === this.currentPageId;
+      const isRenaming = page.id === this.renamingPageId;
+
+      const item = document.createElement('div');
+      item.className = `page-item ${isActive ? 'active' : ''}`;
+      item.dataset.pageId = page.id;
+
+      const icon = document.createElement('span');
+      icon.className = 'page-item-icon';
+      icon.textContent = '📁';
+      item.appendChild(icon);
+
+      if (isRenaming) {
+        item.classList.add('active');
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'page-rename-input';
+        input.value = page.name;
+
+        input.addEventListener('blur', () => {
+          this.finishRenamePage(page.id, input.value);
+        });
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') input.blur();
+          if (e.key === 'Escape') {
+            input.value = page.name;
+            input.blur();
+          }
+        });
+
+        item.appendChild(input);
+        // 自动聚焦
+        setTimeout(() => input.focus(), 10);
+      } else {
+        item.appendChild(document.createTextNode(' ' + page.name));
+
+        // 使用 addEventListener 绑定事件
+        item.addEventListener('click', () => {
+          // 只有点击非当前页面时才切换，避免双击重命名时被干扰
+          if (page.id !== this.currentPageId) {
+            this.switchPage(page.id);
+          }
+        });
+        item.addEventListener('dblclick', (e) => {
+          e.stopPropagation();
+          this.startRenamePage(page.id);
+        });
+        item.addEventListener('contextmenu', (e) => {
+          this.showContextMenu(e, page.id);
+        });
+      }
+
+      list.appendChild(item);
+    });
+  }
+
+  // ========== 右键菜单方法 ==========
+
+  showContextMenu(e, pageId) {
+    e.preventDefault();
+    const menu = document.getElementById('contextMenu');
+    const page = this.pages.find(p => p.id === pageId);
+
+    menu.innerHTML = `
+      <div class="context-menu-item" onclick="reviewSystem.startRenamePage(${pageId}); reviewSystem.hideContextMenu();">
+        ✏️ 重命名
+      </div>
+      <div class="context-menu-item" onclick="reviewSystem.deletePage(${pageId}); reviewSystem.hideContextMenu();">
+        🗑️ 删除分区
+      </div>
+    `;
+
+    menu.style.display = 'block';
+    menu.style.left = `${e.clientX}px`;
+    menu.style.top = `${e.clientY}px`;
+
+    // 点击其他地方关闭
+    const hide = () => {
+      menu.style.display = 'none';
+      document.removeEventListener('click', hide);
+    };
+    setTimeout(() => document.addEventListener('click', hide), 10);
+  }
+
+  hideContextMenu() {
+    document.getElementById('contextMenu').style.display = 'none';
+  }
+
+  // ========== 齿轮菜单方法 ==========
+
+  toggleGearMenu(e) {
+    e.stopPropagation();
+    const menu = document.getElementById('gearMenu');
+    menu.classList.toggle('show');
+
+    // 点击其他地方关闭菜单
+    if (menu.classList.contains('show')) {
+      const closeMenu = (evt) => {
+        if (!menu.contains(evt.target)) {
+          menu.classList.remove('show');
+          document.removeEventListener('click', closeMenu);
+        }
+      };
+      setTimeout(() => document.addEventListener('click', closeMenu), 10);
+    }
+  }
+
+  // ========== 同步功能方法 ==========
+
+  // 手动同步刷新
+  async syncRefresh() {
+    try {
+      this.showNotification('正在同步...');
+      await this.loadPages();
+      await this.loadData();
+      this.renderPageList();
+      this.render();
+      this.updateStats();
+      this.updateBellReminder();
+      this.showNotification('✅ 同步成功');
+    } catch (e) {
+      console.error('同步失败:', e);
+      this.showNotification('❌ 同步失败', true);
+    }
+  }
+
+  // 设置实时同步
+  setupRealtimeSync() {
+    console.log('正在设置 Realtime 订阅...');
+
+    // 订阅 review_items 表变更
+    this.storage.supabase
+      .channel('review-items-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'review_items' },
+        (payload) => {
+          console.log('🔔 Realtime 事件 - review_items:', payload.eventType, payload);
+          this.handleItemChange(payload);
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 review_items 订阅状态:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Realtime 订阅成功：review_items');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Realtime 订阅失败：review_items - 可能需要在 Supabase 启用 Realtime');
+        }
+      });
+
+    // 订阅 pages 表变更
+    this.storage.supabase
+      .channel('pages-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'pages' },
+        (payload) => {
+          console.log('🔔 Realtime 事件 - pages:', payload.eventType, payload);
+          this.handlePageChange(payload);
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 pages 订阅状态:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ Realtime 订阅成功：pages');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Realtime 订阅失败：pages - 可能需要在 Supabase 启用 Realtime');
+        }
+      });
+  }
+
+  // 处理 review_items 变更
+  async handleItemChange(payload) {
+    console.log('收到项目变更:', payload.eventType);
+    // 重新加载当前分页数据并刷新界面
+    await this.loadData();
+    this.render();
+    this.updateStats();
+    this.updateBellReminder();
+  }
+
+  // 处理 pages 变更
+  async handlePageChange(payload) {
+    console.log('收到分页变更:', payload.eventType);
+    await this.loadPages();
+    this.renderPageList();
+  }
+
+  deleteCurrentPage() {
+    if (!this.currentPageId) {
+      this.showNotification('⚠️ 请先选择一个分区', true);
+      return;
+    }
+    this.deletePage(this.currentPageId);
+  }
+
+  // ========== 分页标签渲染（保留兼容旧代码） ==========
+
+  renderPageTabs() {
+    this.renderPageList();
+  }
+
+  updateConnectionStatus(connected) {
+    // 连接状态已移除UI，仅控制台记录
+    console.log(connected ? '已连接到云端' : '离线模式（本地存储)');
+  }
+
   async loadData() {
-    const items = await this.storage.getAllItems();
+    const items = await this.storage.getAllItems(this.currentPageId);
     this.reviewItems = items.map(item => this.storage.fromDbFormat(item));
   }
 
@@ -632,9 +1552,46 @@ class EbbinghausReviewSystem {
     }
   }
 
+  loadLocalPagesBackup() {
+    try {
+      const backup = localStorage.getItem('pages_backup');
+      if (backup) {
+        const data = JSON.parse(backup);
+        this.pages = data.map(page => ({
+          ...page,
+          createdAt: new Date(page.createdAt)
+        }));
+      }
+
+      // 如果没有分页��创建默认分页
+      if (this.pages.length === 0) {
+        this.pages = [{
+          id: Date.now(),
+          name: '默认分页',
+          createdAt: new Date(),
+          sortOrder: 0
+        }];
+      }
+
+      // 设置当前分页
+      if (!this.currentPageId && this.pages.length > 0) {
+        this.currentPageId = this.pages[0].id;
+      }
+    } catch (e) {
+      this.pages = [{
+        id: Date.now(),
+        name: '默认分页',
+        createdAt: new Date(),
+        sortOrder: 0
+      }];
+      this.currentPageId = this.pages[0].id;
+    }
+  }
+
   backupToLocalStorage() {
     try {
       localStorage.setItem('reviewItems_backup', JSON.stringify(this.reviewItems));
+      localStorage.setItem('pages_backup', JSON.stringify(this.pages));
     } catch (e) {
       console.error('备份失败:', e);
     }
@@ -659,6 +1616,27 @@ class EbbinghausReviewSystem {
       await this.addItem();
     });
     document.getElementById('importFile').addEventListener('change', e => this.handleFileImport(e));
+
+    // 确认弹窗按钮事件
+    document.getElementById('modalCancelBtn').addEventListener('click', () => this.onModalCancel());
+    document.getElementById('modalConfirmBtn').addEventListener('click', () => this.onModalConfirm());
+
+    // 点击弹窗背景关闭
+    document.getElementById('confirmModal').addEventListener('click', (e) => {
+      if (e.target.id === 'confirmModal') {
+        this.onModalCancel();
+      }
+    });
+
+    // ESC 键关闭弹窗和右键菜单
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (document.getElementById('confirmModal').classList.contains('show')) {
+          this.onModalCancel();
+        }
+        this.hideContextMenu();
+      }
+    });
   }
 
   async addItem() {
@@ -676,7 +1654,8 @@ class EbbinghausReviewSystem {
       nextReview: new Date(Date.now() + this.reviewIntervals[0] * 24 * 60 * 60 * 1000),
       completedReviews: [],
       easeFactor: 2.5,
-      lastIntervalDays: 0
+      lastIntervalDays: 0,
+      pageId: this.currentPageId  // 关联当前分页
     };
 
     try {
@@ -717,6 +1696,139 @@ class EbbinghausReviewSystem {
     document.getElementById('importFile').click();
   }
 
+  // ========== V13 系统级总备份功能 ==========
+
+  async exportFullBackup() {
+    try {
+      this.showNotification('正在汇总数据...');
+
+      // 1. 获取所有分页
+      const pages = this.pages;
+
+      // 2. 获取所有分页的复习项目
+      const allItems = await this.storage.getAllItems(null); // null = 获取全部
+
+      // 3. 构建备份数据
+      const backupData = {
+        exportDate: new Date().toISOString(),
+        version: '13.0-full-backup',
+        pages: pages.map(p => ({
+          id: p.id,
+          name: p.name,
+          sortOrder: p.sortOrder
+        })),
+        items: allItems.map(item => {
+          const formatted = this.storage.fromDbFormat(item);
+          return {
+            title: formatted.title,
+            content: formatted.content,
+            createdAt: formatted.createdAt.toISOString(),
+            currentInterval: formatted.currentInterval,
+            reviewCount: formatted.reviewCount,
+            nextReview: formatted.nextReview.toISOString(),
+            completedReviews: formatted.completedReviews.map(d => d.toISOString()),
+            easeFactor: formatted.easeFactor,
+            lastIntervalDays: formatted.lastIntervalDays,
+            pageId: formatted.pageId
+          };
+        })
+      };
+
+      // 4. 触发下载
+      const dataStr = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `复习系统总备份_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      this.showNotification(`📤 导出成功：${pages.length} 个分页，${allItems.length} 条数据`);
+    } catch (e) {
+      console.error('导出失败:', e);
+      this.showNotification('❌ 导出失败：' + e.message, true);
+    }
+  }
+
+  async importFullBackup() {
+    // 触发文件选择
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+
+        // 验证格式
+        if (!data.version || !data.pages || !data.items) {
+          throw new Error('不是有效的总备份文件');
+        }
+
+        if (data.version !== '13.0-full-backup') {
+          throw new Error('备份文件版本不匹配，请使用 V13 格式的备份');
+        }
+
+        const confirmMsg = `即将导入 ${data.pages.length} 个分页和 ${data.items.length} 条数据。\n现有数据将被覆盖，确定继续？`;
+        if (!confirm(confirmMsg)) return;
+
+        this.showNotification('正在导入数据...');
+
+        // 1. 清空现有数据
+        await this.storage.clearAllItems();
+        if (this.storage.clearAllPages) {
+          await this.storage.clearAllPages();
+        }
+
+        // 2. 创建 ID 映射表（旧 ID → 新 ID）
+        const pageIdMap = {};
+
+        // 3. 按顺序创建分页，记录新 ID
+        for (const page of data.pages) {
+          const newPageData = await this.storage.addPage(page.name, page.sortOrder);
+          const newPage = this.storage.fromDbPageFormat(newPageData);
+          pageIdMap[page.id] = newPage.id;
+        }
+
+        // 4. 导入所有项目，更新 pageId
+        for (const item of data.items) {
+          const newItem = {
+            title: item.title,
+            content: item.content,
+            createdAt: new Date(item.createdAt),
+            currentInterval: item.currentInterval,
+            reviewCount: item.reviewCount,
+            nextReview: new Date(item.nextReview),
+            completedReviews: (item.completedReviews || []).map(d => new Date(d)),
+            easeFactor: item.easeFactor,
+            lastIntervalDays: item.lastIntervalDays,
+            pageId: pageIdMap[item.pageId] || null  // 映射到新分页 ID
+          };
+          await this.storage.addItem(newItem);
+        }
+
+        // 5. 重新加载分页列表
+        await this.loadPages();
+
+        // 6. 切换到第一个分页
+        if (this.pages.length > 0) {
+          await this.switchPage(this.pages[0].id);
+        }
+
+        this.backupToLocalStorage();
+        this.showNotification(`📥 导入成功：${data.pages.length} 个分页，${data.items.length} 条数据已同步`);
+      } catch (e) {
+        console.error('导入失败:', e);
+        this.showNotification('❌ 导入失败：' + e.message, true);
+      }
+    };
+    input.click();
+  }
+
   async processImportFile(file) {
     try {
       const text = await file.text();
@@ -732,7 +1844,7 @@ class EbbinghausReviewSystem {
 
       if (!confirm(`导入 ${items.length} 条数据。是否清空现有数据并导入？`)) return;
 
-      await this.storage.clearAll();
+      await this.storage.clearAllItems();
       for (const item of items) {
         await this.storage.addItem(item);
       }
@@ -933,7 +2045,7 @@ class EbbinghausReviewSystem {
     if (!confirm('再次确认：真的要清空？')) return;
 
     try {
-      await this.storage.clearAll();
+      await this.storage.clearAllItems();
       this.reviewItems = [];
       this.editingId = null;
       localStorage.removeItem('reviewItems_backup');
@@ -998,7 +2110,7 @@ class EbbinghausReviewSystem {
     const c = this.categorizeItems();
     this.renderCat('urgentItems', c.urgent, 'urgent');
     this.renderCat('todayItems', c.today, 'due-soon');
-    this.renderCat('upcomingItems', c.upcoming, 'due-soon');
+    this.renderCat('upcomingItems', c.upcoming, 'upcoming');
     this.renderCat('futureItems', c.future, 'future');
   }
 
@@ -1009,7 +2121,7 @@ class EbbinghausReviewSystem {
     switch (sectionId) {
       case 'urgentItems': this.renderCat('urgentItems', c.urgent, 'urgent'); break;
       case 'todayItems': this.renderCat('todayItems', c.today, 'due-soon'); break;
-      case 'upcomingItems': this.renderCat('upcomingItems', c.upcoming, 'due-soon'); break;
+      case 'upcomingItems': this.renderCat('upcomingItems', c.upcoming, 'upcoming'); break;
       case 'futureItems': this.renderCat('futureItems', c.future, 'future'); break;
     }
   }
@@ -1091,6 +2203,17 @@ class EbbinghausReviewSystem {
                 <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'italic')"><i>I</i></button>
                 <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'underline')"><u>U</u></button>
                 <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'strikeThrough')"><s>S</s></button>
+                <div class="toolbar-divider"></div>
+                <div class="color-picker" title="文字颜色">
+                  <button type="button" class="color-btn" style="background:#ff0000" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#ff0000')" title="红色"></button>
+                  <button type="button" class="color-btn" style="background:#ffa500" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#ffa500')" title="橙色"></button>
+                  <button type="button" class="color-btn" style="background:#ffff00" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#ffff00')" title="黄色"></button>
+                  <button type="button" class="color-btn" style="background:#008000" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#008000')" title="绿色"></button>
+                  <button type="button" class="color-btn" style="background:#00ffff" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#00ffff')" title="青色"></button>
+                  <button type="button" class="color-btn" style="background:#0000ff" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#0000ff')" title="蓝色"></button>
+                  <button type="button" class="color-btn" style="background:#800080" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#800080')" title="紫色"></button>
+                  <button type="button" class="color-btn" style="background:#000000" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#000000')" title="黑色"></button>
+                </div>
                 <div class="toolbar-divider"></div>
                 <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'removeFormat')">🧹</button>
                 <button type="button" onclick="removeEditCloze(${item.id})" title="清除遮挡">🔓</button>
@@ -1210,7 +2333,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 const reviewSystem = new EbbinghausReviewSystem();
-reviewSystem.init().then(() => console.log('✅ V7 Supabase 版启动'));
+reviewSystem.init().then(() => console.log('✅ V14 多端实时同步版启动'));
   </script>
 
   <style>
