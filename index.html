@@ -1,588 +1,1396 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-<meta charset="UTF-8"/>
-<title>复习提醒系统（V14 多端实时同步版）</title>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<style>
-  :root {
-    --primary-color: #764ba2;
-    --sidebar-bg: #f3f2f1;
-    --active-bg: #ffffff;
-    --text-main: #323130;
-    --danger-color: #d83b01;
-    /* 恢复淡蓝色背景 */
-    --content-bg: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
-  }
+  <meta charset="UTF-8" />
+  <title>复习提醒系统（V14 多端实时同步版）</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <style>
+    :root {
+      --primary-color: #764ba2;
+      --sidebar-bg: #f3f2f1;
+      --active-bg: #ffffff;
+      --text-main: #323130;
+      --danger-color: #d83b01;
+      /* 恢复淡蓝色背景 */
+      --content-bg: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+    }
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-  body {
-    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
-    background: #faf9f8;
-    height: 100vh;
-    overflow: hidden; /* 关键：禁止全局滚动 */
-    display: flex;
-  }
+    body {
+      font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+      background: #faf9f8;
+      height: 100vh;
+      overflow: hidden;
+      /* 关键：禁止全局滚动 */
+      display: flex;
+    }
 
-  /* ========== 根布局 ========== */
-  .app-container {
-    display: flex;
-    width: 100%;
-    height: 100%;
-  }
+    /* ========== 根布局 ========== */
+    .app-container {
+      display: flex;
+      width: 100%;
+      height: 100%;
+    }
 
-  /* ========== 左侧边栏 ========== */
-  .sidebar {
-    width: 260px;
-    background: var(--sidebar-bg);
-    border-right: 1px solid #edebe9;
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
-    z-index: 100;
-  }
+    /* ========== 左侧边栏 ========== */
+    .sidebar {
+      width: 260px;
+      background: var(--sidebar-bg);
+      border-right: 1px solid #edebe9;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      z-index: 100;
+    }
 
-  .sidebar-header {
-    padding: 25px 20px;
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--primary-color);
-  }
+    .sidebar-header {
+      padding: 25px 20px;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--primary-color);
+    }
 
-  .page-list {
-    flex: 1;
-    overflow-y: auto; /* 分页列表独立滚动 */
-    padding: 5px 0;
-  }
+    .page-list {
+      flex: 1;
+      overflow-y: auto;
+      /* 分页列表独立滚动 */
+      padding: 5px 0;
+    }
 
-  .page-item {
-    padding: 10px 20px;
-    margin: 2px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    color: #444;
-    transition: 0.2s;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+    .page-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      /* 确保标题在左，图标在右 */
+      padding: 10px 20px;
+      margin: 2px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #444;
+      transition: 0.2s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
 
-  .page-item:hover { background: #ebebeb; }
-  .page-item.active {
-    background: var(--active-bg);
-    color: var(--primary-color);
-    font-weight: 600;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  }
+    .page-item:hover {
+      background: #ebebeb;
+    }
 
-  .page-item-icon { font-size: 16px; }
+    .page-item.active {
+      background: var(--active-bg);
+      color: var(--primary-color);
+      font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
 
-  .page-rename-input {
-    border: none;
-    background: transparent;
-    font-size: inherit;
-    font-weight: inherit;
-    color: inherit;
-    width: 100%;
-    outline: none;
-    padding: 0;
-    border-bottom: 2px solid var(--primary-color);
-  }
+    .page-item-icon {
+      font-size: 16px;
+    }
 
-  /* 底部管理按钮组 */
-  .sidebar-footer {
-    padding: 15px;
-    border-top: 1px solid #edebe9;
-  }
+    /* 分页复习数量徽章 */
+    .page-review-count {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 5px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: bold;
+      justify-content: center;
+    }
 
-  .footer-row {
-    display: flex;
-    gap: 8px;
-    width: 100%;
-  }
+    .page-review-count.urgent {
+      background: #ff4444;
+      color: #fff;
+    }
 
-  .footer-btn {
-    flex: 3;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #fff;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 20px;
-    color: var(--primary-color);
-    transition: 0.2s;
-    position: relative;
-  }
+    .page-review-count.today {
+      background: #ffd700;
+      color: #333;
+    }
 
-  .footer-btn:hover {
-    background: #f9f9f9;
-    border-color: var(--primary-color);
-  }
+    .page-review-count.empty {
+      background: #e9ecef;
+      color: #6c757d;
+    }
 
-  .footer-btn.delete:hover {
-    color: var(--danger-color);
-    border-color: var(--danger-color);
-  }
+    .count-num {
+      min-width: 12px;
+      text-align: center;
+    }
 
-  /* 齿轮按钮样式 */
-  .footer-btn.gear-wrapper {
-    flex: 1;
-    position: relative;
-  }
+    .count-icon {
+      font-size: 12px;
+    }
 
-  .footer-btn.gear-wrapper:hover {
-    border-color: #6c757d;
-  }
+    .page-rename-input {
+      border: none;
+      background: transparent;
+      font-size: inherit;
+      font-weight: inherit;
+      color: inherit;
+      width: 100%;
+      outline: none;
+      padding: 0;
+      border-bottom: 2px solid var(--primary-color);
+    }
 
-  .gear-icon {
-    font-size: 18px;
-  }
+    /* 底部管理按钮组 */
+    .sidebar-footer {
+      padding: 15px;
+      border-top: 1px solid #edebe9;
+    }
 
-  /* 齿轮下拉菜单 */
-  .gear-menu {
-    display: none;
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #fff;
-    border: 1px solid #edebe9;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-    min-width: 130px;
-    z-index: 1000;
-    margin-bottom: 5px;
-    overflow: hidden;
-  }
+    .footer-row {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+    }
 
-  .gear-menu.show {
-    display: block;
-  }
+    .footer-btn {
+      flex: 3;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 20px;
+      color: var(--primary-color);
+      transition: 0.2s;
+      position: relative;
+    }
 
-  .gear-menu-item {
-    padding: 10px 15px;
-    font-size: 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: var(--text-main);
-    transition: background 0.2s;
-  }
+    .footer-btn:hover {
+      background: #f9f9f9;
+      border-color: var(--primary-color);
+    }
 
-  .gear-menu-item:hover {
-    background: #f3f2f1;
-  }
+    .footer-btn.delete:hover {
+      color: var(--danger-color);
+      border-color: var(--danger-color);
+    }
 
-  .gear-menu-item:first-child {
-    border-bottom: 1px solid #edebe9;
-  }
+    /* 齿轮按钮样式 */
+    .footer-btn.gear-wrapper {
+      flex: 1;
+      position: relative;
+    }
 
-  /* ========== 右键菜单 ========== */
-  .context-menu {
-    position: fixed;
-    background: white;
-    border: 1px solid #edebe9;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    border-radius: 6px;
-    padding: 5px 0;
-    display: none;
-    z-index: 2000;
-    min-width: 150px;
-  }
+    .footer-btn.gear-wrapper:hover {
+      border-color: #6c757d;
+    }
 
-  .context-menu-item {
-    padding: 10px 15px;
-    font-size: 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--text-main);
-  }
+    .gear-icon {
+      font-size: 18px;
+    }
 
-  .context-menu-item:hover { background: #f3f2f1; }
-  .context-menu-item.danger { color: var(--danger-color); }
+    /* 齿轮下拉菜单 */
+    .gear-menu {
+      display: none;
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #fff;
+      border: 1px solid #edebe9;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+      min-width: 130px;
+      z-index: 1000;
+      margin-bottom: 5px;
+      overflow: hidden;
+    }
 
-  /* ========== 右侧主内容区 ========== */
-  .main-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background: var(--content-bg);
-    position: relative;
-    min-width: 0; /* 防止内容撑开 */
-  }
+    .gear-menu.show {
+      display: block;
+    }
 
-  .main-header {
-    padding: 20px 30px;
-    border-bottom: 1px solid #edebe9;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-shrink: 0;
-  }
+    .gear-menu-item {
+      padding: 10px 15px;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-main);
+      transition: background 0.2s;
+    }
 
-  .header-left { display: flex; align-items: center; gap: 15px; }
-  .header-left h1 { font-size: 1.4em; font-weight: 600; margin: 0; color: var(--text-main); }
-  .header-right { display: flex; align-items: center; gap: 15px; }
+    .gear-menu-item:hover {
+      background: #f3f2f1;
+    }
 
-  .scroll-area {
-    flex: 1;
-    overflow-y: auto; /* 内容区独立滚动 */
-    padding: 20px 30px;
-  }
+    .gear-menu-item:first-child {
+      border-bottom: 1px solid #edebe9;
+    }
 
-  .content-inner {
-    max-width: 1000px;
-    width: 100%;
-    margin: 0 auto;
-    box-sizing: border-box;
-  }
+    /* ========== 右键菜单 ========== */
+    .context-menu {
+      position: fixed;
+      background: white;
+      border: 1px solid #edebe9;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      border-radius: 6px;
+      padding: 5px 0;
+      display: none;
+      z-index: 2000;
+      min-width: 150px;
+    }
 
-  /* ========== 铃铛提醒 ========== */
-  .bell-reminder {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background: #f3f2f1;
-    padding: 8px 14px;
-    border-radius: 20px;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-decoration: none;
-    color: var(--text-main);
-    font-size: 14px;
-  }
+    .context-menu-item {
+      padding: 10px 15px;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-main);
+    }
 
-  .bell-reminder:hover {
-    background: #edebe9;
-    transform: translateY(-1px);
-  }
+    .context-menu-item:hover {
+      background: #f3f2f1;
+    }
 
-  .bell-icon {
-    font-size: 18px;
-    animation: swing 2s ease-in-out infinite;
-    transform-origin: top center;
-  }
+    .context-menu-item.danger {
+      color: var(--danger-color);
+    }
 
-  @keyframes swing {
-    0%, 100% { transform: rotate(0deg); }
-    10%, 30% { transform: rotate(10deg); }
-    20%, 40% { transform: rotate(-10deg); }
-    50% { transform: rotate(0deg); }
-  }
+    /* ========== 右侧主内容区 ========== */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--content-bg);
+      position: relative;
+      min-width: 0;
+      /* 防止内容撑开 */
+    }
 
-  .bell-count {
-    background: #ffd700;
-    color: #333;
-    font-weight: bold;
-    font-size: 12px;
-    min-width: 20px;
-    height: 20px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 5px;
-  }
+    .main-header {
+      padding: 20px 30px;
+      border-bottom: 1px solid #edebe9;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
 
-  .bell-count.zero { background: #90EE90; color: #2d5016; }
-  .bell-count.urgent { background: #ff4444; color: #fff; animation: pulse 1.5s infinite; }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
 
-  @keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-  }
+    .header-left h1 {
+      font-size: 1.4em;
+      font-weight: 600;
+      margin: 0;
+      color: var(--text-main);
+    }
 
-  .bell-text { font-size: 12px; font-weight: 500; }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
 
-  /* ========== 表单和按钮 ========== */
-  .add-section {
-    background: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-left: 5px solid #4facfe;
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 30px;
-    width: 100%;
-    box-sizing: border-box;
-  }
+    .scroll-area {
+      flex: 1;
+      overflow-y: auto;
+      /* 内容区独立滚动 */
+      padding: 20px 30px;
+    }
 
-  .form-group { margin-bottom: 20px; }
-  .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #495057; }
-  .form-group input {
-    width: 100%;
-    padding: 12px 15px;
-    border: 2px solid #e9ecef;
-    border-radius: 8px;
-    font-size: 16px;
-    transition: border-color 0.3s;
-  }
-  .form-group input:focus { outline: none; border-color: #4facfe; }
+    .content-inner {
+      max-width: 1000px;
+      width: 100%;
+      margin: 0 auto;
+      box-sizing: border-box;
+    }
 
-  /* 富文本编辑器 */
-  .rich-editor{border:2px solid #e9ecef;border-radius:8px;overflow:hidden;transition:border-color .3s;background:#fff;max-width:100%}
-  .rich-editor:focus-within{border-color:#4facfe}
-  .editor-toolbar{background:#f8f9fa;padding:10px;border-bottom:1px solid #e9ecef;display:flex;gap:8px;flex-wrap:wrap;align-items:center;max-width:100%;box-sizing:border-box}
-  .editor-toolbar button{width:36px;height:36px;border:1px solid #dee2e6;background:#fff;cursor:pointer;border-radius:6px;font-size:14px;transition:all .2s;display:flex;align-items:center;justify-content:center;color:#495057}
-  .editor-toolbar button:hover{background:#e9ecef;border-color:#ced4da;transform:translateY(-1px)}
-  .editor-toolbar button.active{background:#4facfe;color:#fff;border-color:#4facfe}
-  .toolbar-divider{width:1px;height:24px;background:#dee2e6;margin:0 4px}
-  .color-picker{display:flex;gap:4px;align-items:center;padding:2px;background:#fff;border:1px solid #dee2e6;border-radius:6px}
-  .color-btn{width:22px;height:22px;border:2px solid transparent;border-radius:4px;cursor:pointer;transition:all .2s}
-  .color-btn:hover{transform:scale(1.1);border-color:#333;z-index:10}
-  .color-btn.active{border-color:#333;box-shadow:0 0 0 2px #fff,0 0 0 4px #4facfe}
-  .color-btn[data-color="#ffffff"]{border:1px solid #dee2e6}
-  .editor-content{padding:12px 15px;min-height:240px;max-height:420px;overflow-y:auto;outline:none;font-size:16px;line-height:1.6}
-  .editor-content:empty:before{content:attr(placeholder);color:#adb5bd}
+    /* ========== 铃铛提醒 ========== */
+    .bell-reminder {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f3f2f1;
+      padding: 8px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      color: var(--text-main);
+      font-size: 14px;
+    }
 
-  .btn{background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);color:#fff;border:none;padding:12px 25px;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:transform .2s;flex-shrink:0}
-  .btn:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(79,172,254,.4)}
-  .btn-small{padding:8px 16px;font-size:14px;flex-shrink:0}
-  .btn-danger{background:linear-gradient(135deg,#ff6b6b 0%,#ff8e8e 100%)}
-  .btn-success{background:linear-gradient(135deg,#51cf66 0%,#8ce99a 100%)}
-  .btn-warning{background:linear-gradient(135deg,#ffa502 0%,#ffc107 100%)}
-  /* 复习评分按钮 */
-  .rating-btns{display:flex;gap:6px;flex-wrap:wrap;flex:1 1 auto;min-width:0}
-  .rating-btn{padding:6px 12px;font-size:13px;border:none;border-radius:6px;cursor:pointer;transition:all .2s;font-weight:500;flex-shrink:1;min-width:0}
-  .rating-btn:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.15)}
-  .rating-btn.forget{background:linear-gradient(135deg,#ff6b6b,#ee5a5a);color:#fff}
-  .rating-btn.hard{background:linear-gradient(135deg,#ffa940,#fa8c16);color:#fff}
-  .rating-btn.good{background:linear-gradient(135deg,#52c41a,#73d13d);color:#fff}
-  .rating-btn.easy{background:linear-gradient(135deg,#1890ff,#40a9ff);color:#fff}
-  .dynamic-badge{display:inline-block;background:linear-gradient(135deg,#722ed1,#9254de);color:#fff;font-size:11px;padding:2px 6px;border-radius:4px;margin-left:6px;vertical-align:middle}
-  .ease-info{font-size:12px;color:#8c8c8c;margin-top:4px}
+    .bell-reminder:hover {
+      background: #edebe9;
+      transform: translateY(-1px);
+    }
 
-  /* 保存状态指示器 */
-  .save-indicator{position:fixed;top:20px;right:20px;padding:8px 16px;background:rgba(255,255,255,0.95);border-radius:20px;box-shadow:0 2px 10px rgba(0,0,0,0.1);font-size:14px;display:flex;align-items:center;gap:8px;z-index:9999;transition:all .3s}
-  .save-indicator.saving{color:#ffa502}
-  .save-indicator.saved{color:#51cf66}
-  .save-indicator.error{color:#ff6b6b}
-  .save-dot{width:8px;height:8px;border-radius:50%;background:currentColor;animation:savePulse 1.5s infinite}
-  .save-indicator.saved .save-dot{animation:none}
-  @keyframes savePulse{0%,100%{opacity:1}50%{opacity:.3}}
+    .bell-icon {
+      font-size: 18px;
+      animation: swing 2s ease-in-out infinite;
+      transform-origin: top center;
+    }
 
-  .review-sections{display:grid;gap:20px;width:100%;box-sizing:border-box;grid-template-columns:minmax(0,1fr)}
-  .section-title{color:#343a40;font-size:1.5em;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid #e9ecef;scroll-margin-top:100px;overflow-wrap:break-word;word-break:break-word}
+    @keyframes swing {
 
-  /* ========== 复习项目卡片样式 ========== */
-  .review-item{background:#fff;border:1px solid #e9ecef;border-radius:10px;padding:20px;margin-bottom:15px;box-shadow:0 2px 10px rgba(0,0,0,.05);transition:all .3s;width:100%;max-width:100%;overflow-wrap:break-word;word-break:break-word;box-sizing:border-box}
-  .review-item:hover{transform:translateY(-3px);box-shadow:0 8px 25px rgba(0,0,0,.1)}
-  .review-item.urgent{border-left:5px solid #ff6b6b;background:linear-gradient(90deg,#fff5f5 0%,#fff 10%)}
-  .review-item.due-soon{border-left:5px solid #ffa500;background:linear-gradient(90deg,#fff8e1 0%,#fff 10%)}
-  .review-item.upcoming{border-left:5px solid #f59e0b;background:linear-gradient(90deg,#fffbeb 0%,#fff 10%)}
-  .review-item.future{border-left:5px solid #51cf66;background:linear-gradient(90deg,#f0fff4 0%,#fff 10%)}
-  /* 卡片视图下移除圆角和上边框，保留左边框颜色 */
-  .review-item.card-view-item.urgent{border-left:5px solid #ff6b6b}
-  .review-item.card-view-item.due-soon{border-left:5px solid #ffa500}
-  .review-item.card-view-item.upcoming{border-left:5px solid #f59e0b}
-  .review-item.card-view-item.future{border-left:5px solid #51cf66}
-  .review-item.editing{border:2px solid #4facfe;box-shadow:0 0 0 4px rgba(79,172,254,.1)}
+      0%,
+      100% {
+        transform: rotate(0deg);
+      }
 
-  /* ========== 新增：卡片模式样式 ========== */
-  .card-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #f1f3f5;
-    padding: 10px 20px;
-    border-radius: 10px 0 0 0;
-    border: 1px solid #e9ecef;
-    border-bottom: none;
-    margin-bottom: 0;
-    width: 100%;
-    box-sizing: border-box;
-    border-left-width: 5px;
-    border-left-style: solid;
-    border-left-color: #dee2e6;
-  }
-  .card-controls.urgent { border-left-color: #ff6b6b; }
-  .card-controls.due-soon { border-left-color: #ffa500; }
-  .card-controls.upcoming { border-left-color: #f59e0b; }
-  .card-controls.future { border-left-color: #51cf66; }
-  .nav-btn {
-    background: #fff;
-    border: 1px solid #dee2e6;
-    color: #495057;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-    font-size: 18px;
-    user-select: none;
-  }
-  .nav-btn:hover:not(:disabled) {
-    background: #4facfe;
-    color: #fff;
-    border-color: #4facfe;
-    transform: scale(1.1);
-  }
-  .nav-btn:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-    background: #e9ecef;
-  }
-  .page-indicator {
-    font-weight: 600;
-    color: #495057;
-    font-feature-settings: "tnum"; /* 等宽数字 */
-  }
-  /* 卡片视图下的项目样式修正 */
-  .card-view-item {
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
-    border-top: 1px solid #e9ecef;
-    margin-bottom: 0;
-    animation: fadeEffect 0.3s;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  @keyframes fadeEffect {
-    from {opacity: 0; transform: translateY(5px);}
-    to {opacity: 1; transform: translateY(0);}
-  }
+      10%,
+      30% {
+        transform: rotate(10deg);
+      }
 
-  .item-header{display:block;margin-bottom:15px;width:100%;box-sizing:border-box;overflow:hidden}
-  .item-header>div{width:100%;box-sizing:border-box}
-  .item-title{font-size:1.2em;font-weight:600;color:#343a40;margin-bottom:5px;overflow-wrap:break-word;word-break:break-word;width:100%}
-  .item-dates{font-size:.9em;color:#6c757d;width:100%;overflow-wrap:break-word;word-break:break-word}
-  .item-content{color:#495057;line-height:1.6;margin-bottom:15px;background:#f8f9fa;padding:15px;border-radius:6px;white-space:normal;overflow-wrap:break-word;word-break:break-word;max-height:30em;overflow-y:auto;overflow-x:auto;width:100%;box-sizing:border-box}
+      20%,
+      40% {
+        transform: rotate(-10deg);
+      }
 
-  /* 完形填空遮挡样式 */
-  .cloze{display:inline-block;background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);color:#fff;padding:2px 12px;border-radius:4px;cursor:pointer;font-weight:500;min-width:60px;text-align:center;transition:all .2s;user-select:none;vertical-align:middle;margin:0 2px}
-  .cloze:hover{transform:scale(1.02);box-shadow:0 2px 8px rgba(79,172,254,0.4)}
-  .cloze.revealed{background:transparent;color:inherit;padding:0;cursor:default}
-  .cloze.revealed:hover{transform:none;box-shadow:none}
+      50% {
+        transform: rotate(0deg);
+      }
+    }
 
-  /* 编辑模式下的遮挡块样式 */
-  .cloze-edit{display:inline;background:linear-gradient(135deg,#4facfe 0%,#00f2fe 100%);color:#fff;padding:1px 6px;border-radius:3px;font-weight:500;cursor:text}
-  .cloze-edit:focus{outline:2px solid #4facfe;outline-offset:1px}
-  .item-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;width:100%;box-sizing:border-box}
-  .review-cycle{display:flex;gap:5px;margin-top:10px;flex-wrap:wrap}
-  .cycle-dot{width:12px;height:12px;border-radius:50%;background:#e9ecef;flex-shrink:0}
-  .cycle-dot.completed{background:#51cf66}
-  .cycle-dot.current{background:#ffa500}
+    .bell-count {
+      background: #ffd700;
+      color: #333;
+      font-weight: bold;
+      font-size: 12px;
+      min-width: 20px;
+      height: 20px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 5px;
+    }
 
-  .stats{background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff;padding:20px;border-radius:10px;margin-bottom:30px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,0.2);border-left:5px solid rgba(255,255,255,0.5)}
-  .stat-item{text-align:center}
-  .stat-number{font-size:2em;font-weight:700;margin-bottom:5px}
-  .stat-label{opacity:.9}
-  .empty-state{text-align:center;color:#6c757d;padding:40px}
+    .bell-count.zero {
+      background: #90EE90;
+      color: #2d5016;
+    }
 
-  /* 编辑模式 */
-  .edit-input{width:100%;padding:10px;margin-bottom:10px;border:2px solid #4facfe;border-radius:6px;font-size:16px;box-sizing:border-box}
-  .edit-rich-editor{border:2px solid #4facfe;border-radius:6px;overflow:hidden;margin-bottom:10px;background:#fff;max-width:100%;box-sizing:border-box}
-  .edit-rich-editor .editor-toolbar{background:#e7f3ff;padding:8px}
-  .edit-rich-editor .editor-content{padding:10px;min-height:100px;font-size:15px;overflow-wrap:break-word;word-break:break-word}
-  .edit-actions{display:flex;gap:10px;justify-content:flex-end}
-  .btn-cancel{background:#6c757d}
+    .bell-count.urgent {
+      background: #ff4444;
+      color: #fff;
+      animation: pulse 1.5s infinite;
+    }
 
-  /* 数据安全提示 */
-  .backup-notice{background:linear-gradient(135deg,#d4edda 0%,#c3e6cb 100%);border:1px solid #28a745;border-radius:8px;padding:15px;margin-bottom:20px;font-size:.9em;color:#155724}
-  .backup-notice strong{display:block;margin-bottom:5px}
+    @keyframes pulse {
 
-  html{scroll-behavior:smooth}
+      0%,
+      100% {
+        transform: scale(1);
+      }
 
-  /* ========== 分页标签栏样式（已废弃，保留以防引用错误） ========== */
-  .page-tabs{display:none}
-  .tabs-container{display:none}
-  .page-tab{display:none}
-  .page-tab-name{display:none}
-  .page-tab-name-input{display:none}
-  .page-tab-delete{display:none}
-  .add-page-btn{display:none}
+      50% {
+        transform: scale(1.1);
+      }
+    }
 
-  /* ========== 确认弹窗样式 ========== */
-  .confirm-modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 10000;
-    justify-content: center;
-    align-items: center;
-    animation: fadeIn 0.2s ease;
-  }
-  .confirm-modal.show {
-    display: flex;
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  .confirm-modal .modal-content {
-    background: #fff;
-    padding: 30px;
-    border-radius: 15px;
-    max-width: 400px;
-    width: 90%;
-    text-align: center;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-    animation: slideUp 0.3s ease;
-  }
-  @keyframes slideUp {
-    from { transform: translateY(20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-  }
-  .confirm-modal .modal-icon {
-    font-size: 48px;
-    margin-bottom: 15px;
-  }
-  .confirm-modal .modal-title {
-    font-size: 1.3em;
-    font-weight: 600;
-    color: #343a40;
-    margin-bottom: 10px;
-  }
-  .confirm-modal .modal-message {
-    color: #6c757d;
-    margin-bottom: 25px;
-    line-height: 1.6;
-  }
-  .confirm-modal .modal-actions {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-  }
-  .confirm-modal .btn {
-    min-width: 100px;
-  }
+    .bell-text {
+      font-size: 12px;
+      font-weight: 500;
+    }
 
-  @media(max-width:768px){
-    .sidebar{position:fixed;left:-240px;height:100%;z-index:100;transition:left .3s}
-    .sidebar.open{left:0}
-    .menu-toggle{display:block;position:absolute;top:15px;left:15px;width:36px;height:36px;border:none;background:#f3f2f1;border-radius:4px;cursor:pointer;font-size:18px;z-index:50}
-    .menu-toggle:hover{background:#edebe9}
-    .main-content{width:100%}
-    .header h1{font-size:1.2em}
-    .header{padding:15px 20px}
-    .content-inner{padding:15px}
-    .item-header{width:100%}
-    .item-actions{justify-content:flex-start}
-    .stats{grid-template-columns:repeat(2,1fr)}
-  }
-  @media(min-width:769px){
-    .menu-toggle{display:none}
-  }
-</style>
-<base target="_blank">
+    /* ========== 搜索框 ========== */
+    .search-box {
+      display: flex;
+      align-items: center;
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 4px 10px;
+      gap: 8px;
+      height: 32px;
+      transition: border-color 0.3s;
+    }
+
+    .search-box:focus-within {
+      border-color: #4facfe;
+      box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+    }
+
+    .search-icon {
+      font-size: 14px;
+      color: #6c757d;
+    }
+
+    .search-input {
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 14px;
+      width: 180px;
+      color: #495057;
+    }
+
+    .search-input::placeholder {
+      color: #adb5bd;
+    }
+
+    .search-clear {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      color: #6c757d;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    .search-clear:hover {
+      background: #e9ecef;
+      color: #495057;
+    }
+
+    /* ========== 表单和按钮 ========== */
+    .add-section {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-left: 5px solid #4facfe;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 30px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: #495057;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px 15px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.3s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #4facfe;
+    }
+
+    /* 富文本编辑器 */
+    .rich-editor {
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      overflow: hidden;
+      transition: border-color .3s;
+      background: #fff;
+      max-width: 100%
+    }
+
+    .rich-editor:focus-within {
+      border-color: #4facfe
+    }
+
+    .editor-toolbar {
+      background: #f8f9fa;
+      padding: 10px;
+      border-bottom: 1px solid #e9ecef;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      max-width: 100%;
+      box-sizing: border-box
+    }
+
+    .editor-toolbar button {
+      width: 36px;
+      height: 36px;
+      border: 1px solid #dee2e6;
+      background: #fff;
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #495057
+    }
+
+    .editor-toolbar button:hover {
+      background: #e9ecef;
+      border-color: #ced4da;
+      transform: translateY(-1px)
+    }
+
+    .editor-toolbar button.active {
+      background: #4facfe;
+      color: #fff;
+      border-color: #4facfe
+    }
+
+    .toolbar-divider {
+      width: 1px;
+      height: 24px;
+      background: #dee2e6;
+      margin: 0 4px
+    }
+
+    /* 下拉菜单组件 */
+    .toolbar-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
+    .dropdown-button {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .dropdown-button:hover {
+      background: #f8f9fa;
+      border-color: #ced4da;
+      transform: translateY(-1px);
+    }
+
+    .dropdown-arrow {
+      font-size: 10px;
+      color: #6c757d;
+    }
+
+    .dropdown-menu {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      margin-top: 4px;
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      min-width: 120px;
+      z-index: 1000;
+      overflow: hidden;
+    }
+
+    .dropdown-menu.show {
+      display: block;
+    }
+
+    .dropdown-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #495057;
+      transition: background 0.2s;
+    }
+
+    .dropdown-item:hover {
+      background: #f8f9fa;
+    }
+
+    .dropdown-item.active {
+      background: #e7f3ff;
+      color: #1890ff;
+      font-weight: 600;
+    }
+
+    .color-picker {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      padding: 2px;
+      background: #fff;
+      border: 1px solid #dee2e6;
+      border-radius: 6px
+    }
+
+    .color-btn {
+      width: 22px;
+      height: 22px;
+      border: 2px solid transparent;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all .2s
+    }
+
+    .color-btn:hover {
+      transform: scale(1.1);
+      border-color: #333;
+      z-index: 10
+    }
+
+    .color-btn.active {
+      border-color: #333;
+      box-shadow: 0 0 0 2px #fff, 0 0 0 4px #4facfe
+    }
+
+    .color-btn[data-color="#ffffff"] {
+      border: 1px solid #dee2e6
+    }
+
+    .editor-content {
+      padding: 12px 15px;
+      min-height: 240px;
+      max-height: 420px;
+      overflow-y: auto;
+      outline: none;
+      font-size: 16px;
+      line-height: 1.6
+    }
+
+    .editor-content:empty:before {
+      content: attr(placeholder);
+      color: #adb5bd
+    }
+
+    .btn {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      color: #fff;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform .2s;
+      flex-shrink: 0
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(79, 172, 254, .4)
+    }
+
+    .btn-small {
+      padding: 8px 16px;
+      font-size: 14px;
+      flex-shrink: 0
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #ff6b6b 0%, #ff8e8e 100%)
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #51cf66 0%, #8ce99a 100%)
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #ffa502 0%, #ffc107 100%)
+    }
+
+    /* 复习评分按钮 */
+    .rating-btns {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      flex: 1 1 auto;
+      min-width: 0
+    }
+
+    .rating-btn {
+      padding: 6px 12px;
+      font-size: 13px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all .2s;
+      font-weight: 500;
+      flex-shrink: 1;
+      min-width: 0
+    }
+
+    .rating-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, .15)
+    }
+
+    .rating-btn.forget {
+      background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+      color: #fff
+    }
+
+    .rating-btn.hard {
+      background: linear-gradient(135deg, #ffa940, #fa8c16);
+      color: #fff
+    }
+
+    .rating-btn.good {
+      background: linear-gradient(135deg, #52c41a, #73d13d);
+      color: #fff
+    }
+
+    .rating-btn.easy {
+      background: linear-gradient(135deg, #1890ff, #40a9ff);
+      color: #fff
+    }
+
+    .dynamic-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #722ed1, #9254de);
+      color: #fff;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      vertical-align: middle
+    }
+
+    .ease-info {
+      font-size: 12px;
+      color: #8c8c8c;
+      margin-top: 4px
+    }
+
+    /* 保存状态指示器 */
+    .save-indicator {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 20px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 9999;
+      transition: all .3s
+    }
+
+    .save-indicator.saving {
+      color: #ffa502
+    }
+
+    .save-indicator.saved {
+      color: #51cf66
+    }
+
+    .save-indicator.error {
+      color: #ff6b6b
+    }
+
+    .save-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      animation: savePulse 1.5s infinite
+    }
+
+    .save-indicator.saved .save-dot {
+      animation: none
+    }
+
+    @keyframes savePulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .3
+      }
+    }
+
+    .review-sections {
+      display: grid;
+      gap: 20px;
+      width: 100%;
+      box-sizing: border-box;
+      grid-template-columns: minmax(0, 1fr)
+    }
+
+    .section-title {
+      color: #343a40;
+      font-size: 1.5em;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #e9ecef;
+      scroll-margin-top: 100px;
+      overflow-wrap: break-word;
+      word-break: break-word
+    }
+
+    /* ========== 复习项目卡片样式 ========== */
+    .review-item {
+      background: #fff;
+      border: 1px solid #e9ecef;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 15px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .05);
+      transition: all .3s;
+      width: 100%;
+      max-width: 100%;
+      overflow-wrap: break-word;
+      word-break: break-word;
+      box-sizing: border-box
+    }
+
+    .review-item:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, .1)
+    }
+
+    .review-item.urgent {
+      border-left: 5px solid #ff6b6b;
+      background: linear-gradient(90deg, #fff5f5 0%, #fff 10%)
+    }
+
+    .review-item.due-soon {
+      border-left: 5px solid #ffa500;
+      background: linear-gradient(90deg, #fff8e1 0%, #fff 10%)
+    }
+
+    .review-item.upcoming {
+      border-left: 5px solid #f59e0b;
+      background: linear-gradient(90deg, #fffbeb 0%, #fff 10%)
+    }
+
+    .review-item.future {
+      border-left: 5px solid #51cf66;
+      background: linear-gradient(90deg, #f0fff4 0%, #fff 10%)
+    }
+
+    /* 卡片视图下移除圆角和上边框，保留左边框颜色 */
+    .review-item.card-view-item.urgent {
+      border-left: 5px solid #ff6b6b
+    }
+
+    .review-item.card-view-item.due-soon {
+      border-left: 5px solid #ffa500
+    }
+
+    .review-item.card-view-item.upcoming {
+      border-left: 5px solid #f59e0b
+    }
+
+    .review-item.card-view-item.future {
+      border-left: 5px solid #51cf66
+    }
+
+    .review-item.editing {
+      border: 2px solid #4facfe;
+      box-shadow: 0 0 0 4px rgba(79, 172, 254, .1)
+    }
+
+    /* ========== 新增：卡片模式样式 ========== */
+    .card-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f1f3f5;
+      padding: 10px 20px;
+      border-radius: 10px 0 0 0;
+      border: 1px solid #e9ecef;
+      border-bottom: none;
+      margin-bottom: 0;
+      width: 100%;
+      box-sizing: border-box;
+      border-left-width: 5px;
+      border-left-style: solid;
+      border-left-color: #dee2e6;
+    }
+
+    .card-controls.urgent {
+      border-left-color: #ff6b6b;
+    }
+
+    .card-controls.due-soon {
+      border-left-color: #ffa500;
+    }
+
+    .card-controls.upcoming {
+      border-left-color: #f59e0b;
+    }
+
+    .card-controls.future {
+      border-left-color: #51cf66;
+    }
+
+    .nav-btn {
+      background: #fff;
+      border: 1px solid #dee2e6;
+      color: #495057;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      font-size: 18px;
+      user-select: none;
+    }
+
+    .nav-btn:hover:not(:disabled) {
+      background: #4facfe;
+      color: #fff;
+      border-color: #4facfe;
+      transform: scale(1.1);
+    }
+
+    .nav-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      background: #e9ecef;
+    }
+
+    .page-indicator {
+      font-weight: 600;
+      color: #495057;
+      font-feature-settings: "tnum";
+      /* 等宽数字 */
+    }
+
+    /* 卡片视图下的项目样式修正 */
+    .card-view-item {
+      border-top-left-radius: 0;
+      border-top-right-radius: 0;
+      border-top: 1px solid #e9ecef;
+      margin-bottom: 0;
+      animation: fadeEffect 0.3s;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    @keyframes fadeEffect {
+      from {
+        opacity: 0;
+        transform: translateY(5px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .item-header {
+      display: block;
+      margin-bottom: 15px;
+      width: 100%;
+      box-sizing: border-box;
+      overflow: hidden
+    }
+
+    .item-header>div {
+      width: 100%;
+      box-sizing: border-box
+    }
+
+    .item-title {
+      font-size: 1.2em;
+      font-weight: 600;
+      color: #343a40;
+      margin-bottom: 5px;
+      overflow-wrap: break-word;
+      word-break: break-word;
+      width: 100%
+    }
+
+    .item-dates {
+      font-size: .9em;
+      color: #6c757d;
+      width: 100%;
+      overflow-wrap: break-word;
+      word-break: break-word
+    }
+
+    .item-content {
+      color: #495057;
+      line-height: 1.6;
+      margin-bottom: 15px;
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 6px;
+      white-space: normal;
+      overflow-wrap: break-word;
+      word-break: break-word;
+      max-height: 30em;
+      overflow-y: auto;
+      overflow-x: auto;
+      width: 100%;
+      box-sizing: border-box
+    }
+
+    /* 完形填空遮挡样式 */
+    .cloze {
+      display: inline-block;
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      color: #fff;
+      padding: 2px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+      min-width: 60px;
+      text-align: center;
+      transition: all .2s;
+      user-select: none;
+      vertical-align: middle;
+      margin: 0 2px
+    }
+
+    .cloze:hover {
+      transform: scale(1.02);
+      box-shadow: 0 2px 8px rgba(79, 172, 254, 0.4)
+    }
+
+    .cloze.revealed {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      cursor: default
+    }
+
+    .cloze.revealed:hover {
+      transform: none;
+      box-shadow: none
+    }
+
+    /* 编辑模式下的遮挡块样式 */
+    .cloze-edit {
+      display: inline;
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      color: #fff;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-weight: 500;
+      cursor: text
+    }
+
+    .cloze-edit:focus {
+      outline: 2px solid #4facfe;
+      outline-offset: 1px
+    }
+
+    .item-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      width: 100%;
+      box-sizing: border-box
+    }
+
+    .review-cycle {
+      display: flex;
+      gap: 5px;
+      margin-top: 10px;
+      flex-wrap: wrap
+    }
+
+    .cycle-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #e9ecef;
+      flex-shrink: 0
+    }
+
+    .cycle-dot.completed {
+      background: #51cf66
+    }
+
+    .cycle-dot.current {
+      background: #ffa500
+    }
+
+    .stats {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-left: 5px solid rgba(255, 255, 255, 0.5)
+    }
+
+    .stat-item {
+      text-align: center
+    }
+
+    .stat-number {
+      font-size: 2em;
+      font-weight: 700;
+      margin-bottom: 5px
+    }
+
+    .stat-label {
+      opacity: .9
+    }
+
+    .empty-state {
+      text-align: center;
+      color: #6c757d;
+      padding: 40px
+    }
+
+    /* 编辑模式 */
+    .edit-input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 2px solid #4facfe;
+      border-radius: 6px;
+      font-size: 16px;
+      box-sizing: border-box
+    }
+
+    .edit-rich-editor {
+      border: 2px solid #4facfe;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-bottom: 10px;
+      background: #fff;
+      max-width: 100%;
+      box-sizing: border-box
+    }
+
+    .edit-rich-editor .editor-toolbar {
+      background: #e7f3ff;
+      padding: 8px
+    }
+
+    .edit-rich-editor .editor-content {
+      padding: 10px;
+      min-height: 100px;
+      font-size: 15px;
+      overflow-wrap: break-word;
+      word-break: break-word
+    }
+
+    .edit-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end
+    }
+
+    .btn-cancel {
+      background: #6c757d
+    }
+
+    /* 数据安全提示 */
+    .backup-notice {
+      background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+      border: 1px solid #28a745;
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      font-size: .9em;
+      color: #155724
+    }
+
+    .backup-notice strong {
+      display: block;
+      margin-bottom: 5px
+    }
+
+    html {
+      scroll-behavior: smooth
+    }
+
+    /* ========== 确认弹窗样式 ========== */
+    .confirm-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .confirm-modal.show {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    .confirm-modal .modal-content {
+      background: #fff;
+      padding: 30px;
+      border-radius: 15px;
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from {
+        transform: translateY(20px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .confirm-modal .modal-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+
+    .confirm-modal .modal-title {
+      font-size: 1.3em;
+      font-weight: 600;
+      color: #343a40;
+      margin-bottom: 10px;
+    }
+
+    .confirm-modal .modal-message {
+      color: #6c757d;
+      margin-bottom: 25px;
+      line-height: 1.6;
+    }
+
+    .confirm-modal .modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .confirm-modal .btn {
+      min-width: 100px;
+    }
+
+    @media(max-width:768px) {
+      .sidebar {
+        position: fixed;
+        left: -260px;
+        height: 100%;
+        z-index: 100;
+        transition: left .3s
+      }
+
+      .sidebar.open {
+        left: 0
+      }
+
+      .menu-toggle {
+        display: block;
+        position: absolute;
+        top: 15px;
+        left: 15px;
+        width: 36px;
+        height: 36px;
+        border: none;
+        background: #f3f2f1;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 18px;
+        z-index: 50
+      }
+
+      .menu-toggle:hover {
+        background: #edebe9
+      }
+
+      .main-content {
+        width: 100%
+      }
+
+      .main-header h1 {
+        font-size: 1.2em
+      }
+
+      .main-header {
+        padding: 15px 20px
+      }
+
+      .content-inner {
+        padding: 15px
+      }
+
+      .item-header {
+        width: 100%
+      }
+
+      .item-actions {
+        justify-content: flex-start
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, 1fr)
+      }
+    }
+
+    @media(min-width:769px) {
+      .menu-toggle {
+        display: none
+      }
+    }
+  </style>
+  <base target="_blank">
 </head>
+
 <body>
   <div id="saveIndicator" class="save-indicator saved" style="display:none;">
     <span class="save-dot"></span>
@@ -590,7 +1398,6 @@
   </div>
 
   <div class="app-container">
-    <!-- 左侧边栏 -->
     <div class="sidebar" id="sidebar">
       <div class="sidebar-header">复习系统</div>
       <div id="pageList" class="page-list"></div>
@@ -601,13 +1408,16 @@
           <div class="footer-btn gear-wrapper" title="系统备份" onclick="reviewSystem.toggleGearMenu(event)">
             <span class="gear-icon">⚙️</span>
             <div class="gear-menu" id="gearMenu">
-              <div class="gear-menu-item" onclick="event.stopPropagation(); reviewSystem.syncRefresh(); reviewSystem.toggleGearMenu(event);">
+              <div class="gear-menu-item"
+                onclick="event.stopPropagation(); reviewSystem.syncRefresh(); reviewSystem.toggleGearMenu(event);">
                 <span>🔄</span> 同步刷新
               </div>
-              <div class="gear-menu-item" onclick="event.stopPropagation(); reviewSystem.exportFullBackup(); reviewSystem.toggleGearMenu(event);">
+              <div class="gear-menu-item"
+                onclick="event.stopPropagation(); reviewSystem.exportFullBackup(); reviewSystem.toggleGearMenu(event);">
                 <span>📤</span> 导出总备份
               </div>
-              <div class="gear-menu-item" onclick="event.stopPropagation(); reviewSystem.importFullBackup(); reviewSystem.toggleGearMenu(event);">
+              <div class="gear-menu-item"
+                onclick="event.stopPropagation(); reviewSystem.importFullBackup(); reviewSystem.toggleGearMenu(event);">
                 <span>📥</span> 导入总备份
               </div>
             </div>
@@ -616,11 +1426,15 @@
       </div>
     </div>
 
-    <!-- 右侧主内容 -->
     <div class="main-content">
       <div class="main-header">
         <div class="header-left">
           <h1 id="currentPageTitle">复习提醒</h1>
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" class="search-input" placeholder="搜索标题..." />
+            <button type="button" class="search-clear" id="searchClear" style="display:none" title="清空搜索">❌</button>
+          </div>
         </div>
         <div class="header-right">
           <a href="#today-review-anchor" class="bell-reminder" id="bellReminder" title="点击查看今日复习">
@@ -631,10 +1445,8 @@
         </div>
       </div>
 
-      <!-- 可滚动内容区 -->
       <div class="scroll-area" id="mainScroll">
         <div class="content-inner">
-          <!-- 确认弹窗 -->
           <div class="confirm-modal" id="confirmModal">
             <div class="modal-content">
               <div class="modal-icon" id="modalIcon">⚠️</div>
@@ -648,10 +1460,22 @@
           </div>
 
           <div class="stats">
-            <div class="stat-item"><div class="stat-number" id="totalItems">0</div><div class="stat-label">总学习项目</div></div>
-            <div class="stat-item"><div class="stat-number" id="dueToday">0</div><div class="stat-label">今日待复习</div></div>
-            <div class="stat-item"><div class="stat-number" id="completedToday">0</div><div class="stat-label">今日已完成</div></div>
-            <div class="stat-item"><div class="stat-number" id="streakDays">0</div><div class="stat-label">连续学习天数</div></div>
+            <div class="stat-item">
+              <div class="stat-number" id="totalItems">0</div>
+              <div class="stat-label">总学习项目</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number" id="dueToday">0</div>
+              <div class="stat-label">今日待复习</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number" id="completedToday">0</div>
+              <div class="stat-label">今日已完成</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-number" id="streakDays">0</div>
+              <div class="stat-label">连续学习天数</div>
+            </div>
           </div>
 
           <div class="add-section">
@@ -659,40 +1483,122 @@
             <form id="addForm">
               <div class="form-group">
                 <label for="title">标题</label>
-                <input type="text" id="title" placeholder="例如：知识点 - C++相关" required/>
+                <input type="text" id="title" placeholder="例如：知识点 - C++相关" required />
               </div>
 
               <div class="form-group">
                 <label>学习内容</label>
                 <div class="rich-editor">
                   <div class="editor-toolbar">
-                    <button type="button" onclick="formatDoc('bold')" title="加粗"><b>B</b></button>
-                    <button type="button" onclick="formatDoc('italic')" title="斜体"><i>I</i></button>
-                    <button type="button" onclick="formatDoc('underline')" title="下划线"><u>U</u></button>
-                    <button type="button" onclick="formatDoc('strikeThrough')" title="删除线"><s>S</s></button>
+                    <button type="button" onmousedown="event.preventDefault()" onclick="formatDoc('bold')"
+                      title="加粗"><b>B</b></button>
+                    <button type="button" onmousedown="event.preventDefault()" onclick="formatDoc('italic')"
+                      title="斜体"><i>I</i></button>
+                    <button type="button" onmousedown="event.preventDefault()" onclick="formatDoc('underline')"
+                      title="下划线"><u>U</u></button>
+                    <button type="button" onmousedown="event.preventDefault()" onclick="formatDoc('strikeThrough')"
+                      title="删除线"><s>S</s></button>
                     <div class="toolbar-divider"></div>
-                    <button type="button" onclick="formatDoc('insertUnorderedList')" title="无序列表">• 列表</button>
-                    <button type="button" onclick="formatDoc('insertOrderedList')" title="有序列表">1. 列表</button>
+                    <button type="button" onmousedown="event.preventDefault()"
+                      onclick="formatDoc('insertUnorderedList')" title="无序列表">• 列表</button>
+                    <button type="button" onmousedown="event.preventDefault()" onclick="formatDoc('insertOrderedList')"
+                      title="有序列表">1. 列表</button>
                     <div class="toolbar-divider"></div>
 
                     <div class="color-picker" title="文字颜色">
-                      <button type="button" class="color-btn" style="background:#ff0000" onclick="formatDoc('foreColor', '#ff0000')" title="红色"></button>
-                      <button type="button" class="color-btn" style="background:#ffa500" onclick="formatDoc('foreColor', '#ffa500')" title="橙色"></button>
-                      <button type="button" class="color-btn" style="background:#ffff00" onclick="formatDoc('foreColor', '#ffff00')" title="黄色"></button>
-                      <button type="button" class="color-btn" style="background:#008000" onclick="formatDoc('foreColor', '#008000')" title="绿色"></button>
-                      <button type="button" class="color-btn" style="background:#00ffff" onclick="formatDoc('foreColor', '#00ffff')" title="青色"></button>
-                      <button type="button" class="color-btn" style="background:#0000ff" onclick="formatDoc('foreColor', '#0000ff')" title="蓝色"></button>
-                      <button type="button" class="color-btn" style="background:#800080" onclick="formatDoc('foreColor', '#800080')" title="紫色"></button>
-                      <button type="button" class="color-btn" style="background:#000000" onclick="formatDoc('foreColor', '#000000')" title="黑色"></button>
-                      <button type="button" class="color-btn" style="background:#ffffff" onclick="formatDoc('foreColor', '#ffffff')" title="白色"></button>
+                      <button type="button" class="color-btn" style="background:#ff0000"
+                        onmousedown="event.preventDefault()" onclick="formatDoc('foreColor', '#ff0000')"
+                        title="红色"></button>
+                      <button type="button" class="color-btn" style="background:#ffa500"
+                        onmousedown="event.preventDefault()" onclick="formatDoc('foreColor', '#ffa500')"
+                        title="橙色"></button>
+                      <button type="button" class="color-btn" style="background:#ffff00"
+                        onmousedown="event.preventDefault()" onclick="formatDoc('foreColor', '#ffff00')"
+                        title="黄色"></button>
+                      <button type="button" class="color-btn" style="background:#008000"
+                        onmousedown="event.preventDefault()" onclick="formatDoc('foreColor', '#008000')"
+                        title="绿色"></button>
+                      <button type="button" class="color-btn" style="background:#00ffff"
+                        onmousedown="event.preventDefault()" onclick="formatDoc('foreColor', '#00ffff')"
+                        title="青色"></button>
+                      <button type="button" class="color-btn" style="background:#0000ff"
+                        onmousedown="event.preventDefault()" onclick="formatDoc('foreColor', '#0000ff')"
+                        title="蓝色"></button>
+                      <button type="button" class="color-btn" style="background:#800080"
+                        onmousedown="event.preventDefault()" onclick="formatDoc('foreColor', '#800080')"
+                        title="紫色"></button>
+                      <button type="button" class="color-btn" style="background:#000000"
+                        onmousedown="event.preventDefault()" onclick="formatDoc('foreColor', '#000000')"
+                        title="黑色"></button>
+                      <button type="button" class="color-btn" style="background:#ffffff"
+                        onmousedown="event.preventDefault()" onclick="formatDoc('foreColor', '#ffffff')"
+                        title="白色"></button>
                     </div>
                     <div class="toolbar-divider"></div>
-                    <button type="button" onclick="formatDoc('removeFormat')" title="清除格式">🧹</button>
-                    <button type="button" onclick="removeCloze()" title="清除遮挡">🔓</button>
+
+                    <div class="toolbar-dropdown">
+                      <button type="button" class="dropdown-button" onmousedown="event.preventDefault()"
+                        onclick="toggleDropdown('font-size-menu')">
+                        <span id="currentFontSize">16px</span>
+                        <span class="dropdown-arrow">▼</span>
+                      </button>
+                      <div class="dropdown-menu" id="font-size-menu">
+                        <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="setFontSize('12px')">
+                          12px 小号</div>
+                        <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="setFontSize('14px')">
+                          14px 稍小</div>
+                        <div class="dropdown-item active" onmousedown="event.preventDefault()"
+                          onclick="setFontSize('16px')">16px 正常</div>
+                        <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="setFontSize('18px')">
+                          18px 稍大</div>
+                        <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="setFontSize('20px')">
+                          20px 中号</div>
+                        <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="setFontSize('24px')">
+                          24px 大号</div>
+                        <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="setFontSize('32px')">
+                          32px 超大</div>
+                      </div>
+                    </div>
+
+                    <div class="toolbar-dropdown">
+                      <button type="button" class="dropdown-button" onmousedown="event.preventDefault()"
+                        onclick="toggleDropdown('highlight-menu')">
+                        <span>🖍️</span>
+                        <span class="dropdown-arrow">▼</span>
+                      </button>
+                      <div class="dropdown-menu" id="highlight-menu">
+                        <div class="dropdown-item" onmousedown="event.preventDefault()"
+                          onclick="setHighlight('#ffcccc')">🟥 红色高亮</div>
+                        <div class="dropdown-item" onmousedown="event.preventDefault()"
+                          onclick="setHighlight('#ffd6a5')">🟧 橙色高亮</div>
+                        <div class="dropdown-item" onmousedown="event.preventDefault()"
+                          onclick="setHighlight('#ffff00')">🟨 黄色高亮</div>
+                        <div class="dropdown-item" onmousedown="event.preventDefault()"
+                          onclick="setHighlight('#90EE90')">🟩 绿色高亮</div>
+                        <div class="dropdown-item" onmousedown="event.preventDefault()"
+                          onclick="setHighlight('#e0ffff')">💠 青色高亮</div>
+                        <div class="dropdown-item" onmousedown="event.preventDefault()"
+                          onclick="setHighlight('#ADD8E6')">🟦 蓝色高亮</div>
+                        <div class="dropdown-item" onmousedown="event.preventDefault()"
+                          onclick="setHighlight('#DDA0DD')">🟪 紫色高亮</div>
+                        <div class="dropdown-item" onmousedown="event.preventDefault()"
+                          onclick="setHighlight('#e9ecef')">⬛ 灰色高亮</div>
+                        <div class="dropdown-item" onmousedown="event.preventDefault()"
+                          onclick="setHighlight('transparent')">⬜ 清除高亮</div>
+                      </div>
+                    </div>
+
                     <div class="toolbar-divider"></div>
-                    <button type="button" onclick="addCloze()" title="添加遮挡 (选中文字后点击)">🔒 遮挡</button>
+                    <button type="button" onmousedown="event.preventDefault()" onclick="formatDoc('removeFormat')"
+                      title="清除格式">🧹</button>
+                    <button type="button" onmousedown="event.preventDefault()" onclick="removeCloze()"
+                      title="清除遮挡">🔓</button>
+                    <div class="toolbar-divider"></div>
+                    <button type="button" onmousedown="event.preventDefault()" onclick="addCloze()"
+                      title="添加遮挡 (选中文字后点击)">🔒 遮挡</button>
                   </div>
-                  <div id="content" class="editor-content" contenteditable="true" placeholder="详细的学习内容...支持富文本格式和颜色，使用 {{c1::内容}} 添加遮挡"></div>
+                  <div id="content" class="editor-content" contenteditable="true"
+                    placeholder="详细的学习内容...支持富文本格式和颜色，使用 {{c1::内容}} 添加遮挡"></div>
                 </div>
               </div>
 
@@ -706,7 +1612,7 @@
                 <button class="btn btn-small" onclick="reviewSystem.importData()">📥 导入数据</button>
                 <button class="btn btn-small btn-danger" onclick="reviewSystem.clearAllData()">🗑️ 清空所有数据</button>
               </div>
-              <input type="file" id="importFile" accept=".json" style="display:none"/>
+              <input type="file" id="importFile" accept=".json" style="display:none" />
             </div>
           </div>
 
@@ -738,657 +1644,871 @@
     </div>
   </div>
 
-  <!-- 右键菜单 -->
   <div id="contextMenu" class="context-menu"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
-/* ========== Supabase 配置（请替换为你的配置） ========== */
-const SUPABASE_URL = 'https://seybjuagrwthgonvjesx.supabase.co';  // 替换为你的 Project URL
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNleWJqdWFncnd0aGdvbnZqZXN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Njc5NDAsImV4cCI6MjA4OTU0Mzk0MH0.Qy501V_HnmA5Gj2sNorIqUXlwuMaSmvRCDCKQmXijDQ';
+    /* ========== Supabase 配置（请替换为你的配置） ========== */
+    const SUPABASE_URL = 'https://seybjuagrwthgonvjesx.supabase.co';  // 替换为你的 Project URL
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNleWJqdWFncnd0aGdvbnZqZXN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Njc5NDAsImV4cCI6MjA4OTU0Mzk0MH0.Qy501V_HnmA5Gj2sNorIqUXlwuMaSmvRCDCKQmXijDQ';
 
-/* ========== Supabase 存储类 ========== */
-class SupabaseStorage {
-  constructor() {
-    this.supabase = null;
-    this.tableName = 'review_items';
-    this.pagesTable = 'pages';
-  }
-
-  async init() {
-    // 先创建客户端
-    this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    // 测试连接
-    const { error } = await this.supabase.from(this.tableName).select('id').limit(1);
-    if (error && error.code !== 'PGRST116') {
-      console.warn('Supabase 连接测试失败:', error.message);
-      throw error;
-    }
-    console.log('✅ Supabase 连接成功');
-  }
-
-  // ========== 分页管理方法 ==========
-
-  async getAllPages() {
-    const { data, error } = await this.supabase
-      .from(this.pagesTable)
-      .select('*')
-      .order('sort_order', { ascending: true });
-    if (error) throw error;
-    return data || [];
-  }
-
-  async addPage(name, sortOrder = 0) {
-    const { data, error } = await this.supabase
-      .from(this.pagesTable)
-      .insert([{ name, sort_order: sortOrder }])
-      .select();
-    if (error) throw error;
-    return data?.[0];
-  }
-
-  async updatePage(id, name) {
-    const { error } = await this.supabase
-      .from(this.pagesTable)
-      .update({ name })
-      .eq('id', id);
-    if (error) throw error;
-  }
-
-  async deletePage(id) {
-    // 先删除该分页下的所有项目
-    const { error: itemsError } = await this.supabase
-      .from(this.tableName)
-      .delete()
-      .eq('page_id', id);
-    if (itemsError) throw itemsError;
-
-    // 再删除分页
-    const { error } = await this.supabase
-      .from(this.pagesTable)
-      .delete()
-      .eq('id', id);
-    if (error) throw error;
-  }
-
-  async reorderPages(pageOrders) {
-    // pageOrders 是 [{id, sort_order}, ...] 格式
-    for (const { id, sort_order } of pageOrders) {
-      const { error } = await this.supabase
-        .from(this.pagesTable)
-        .update({ sort_order })
-        .eq('id', id);
-      if (error) throw error;
-    }
-  }
-
-  // ========== 项目管理方法 ==========
-
-  async getAllItems(pageId = null) {
-    let query = this.supabase
-      .from(this.tableName)
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (pageId !== null) {
-      query = query.eq('page_id', pageId);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-    return data || [];
-  }
-
-  async addItem(item) {
-    const dbItem = this.toDbFormat(item);
-    // 不发送 id，让数据库自动生成
-    delete dbItem.id;
-    const { data, error } = await this.supabase
-      .from(this.tableName)
-      .insert([dbItem])
-      .select();
-    if (error) throw error;
-    return data?.[0];
-  }
-
-  async updateItem(id, updates) {
-    const dbUpdates = this.toDbFormat(updates);
-    delete dbUpdates.id;  // 删除 id，避免更新主键导致错误
-    // 注意：review_items 表没有 updated_at 列，不发送此字段
-    const { error } = await this.supabase
-      .from(this.tableName)
-      .update(dbUpdates)
-      .eq('id', id);
-    if (error) throw error;
-  }
-
-  async deleteItem(id) {
-    const { error } = await this.supabase
-      .from(this.tableName)
-      .delete()
-      .eq('id', id);
-    if (error) throw error;
-  }
-
-  async clearAllItems() {
-    const { error } = await this.supabase
-      .from(this.tableName)
-      .delete()
-      .neq('id', 0);
-    if (error) throw error;
-  }
-
-  async clearAllPages() {
-    const { error } = await this.supabase
-      .from(this.pagesTable)
-      .delete()
-      .neq('id', 0);
-    if (error) throw error;
-  }
-
-  toDbFormat(item) {
-    const dbItem = {};
-    if (item.id !== undefined) dbItem.id = item.id;
-    if (item.title !== undefined) dbItem.title = item.title;
-    if (item.content !== undefined) dbItem.content = item.content;
-    if (item.createdAt !== undefined) dbItem.created_at = new Date(item.createdAt).toISOString();
-    if (item.currentInterval !== undefined) dbItem.current_interval = item.currentInterval;
-    if (item.reviewCount !== undefined) dbItem.review_count = item.reviewCount;
-    if (item.nextReview !== undefined) dbItem.next_review = new Date(item.nextReview).toISOString();
-    if (item.completedReviews !== undefined) dbItem.completed_reviews = item.completedReviews.map(d => new Date(d).toISOString());
-    if (item.easeFactor !== undefined) dbItem.ease_factor = item.easeFactor;
-    if (item.lastIntervalDays !== undefined) dbItem.last_interval_days = item.lastIntervalDays;
-    if (item.pageId !== undefined) dbItem.page_id = item.pageId;
-    return dbItem;
-  }
-
-  fromDbFormat(dbItem) {
-    return {
-      id: dbItem.id,
-      title: dbItem.title,
-      content: dbItem.content,
-      createdAt: new Date(dbItem.created_at),
-      currentInterval: dbItem.current_interval || 0,
-      reviewCount: dbItem.review_count || 0,
-      nextReview: new Date(dbItem.next_review),
-      completedReviews: (dbItem.completed_reviews || []).map(d => new Date(d)),
-      easeFactor: dbItem.ease_factor || 2.5,
-      lastIntervalDays: dbItem.last_interval_days || 0,
-      pageId: dbItem.page_id || null
-    };
-  }
-
-  // 分页格式转换
-  fromDbPageFormat(dbPage) {
-    return {
-      id: dbPage.id,
-      name: dbPage.name,
-      createdAt: new Date(dbPage.created_at),
-      sortOrder: dbPage.sort_order || 0
-    };
-  }
-}
-
-/* ========== 全局富文本编辑工具函数 ========== */
-function formatDoc(cmd, value = null) {
-  document.execCommand(cmd, false, value);
-  const editor = document.getElementById('content');
-  if (editor) editor.focus();
-}
-
-function addCloze() {
-  const selection = window.getSelection();
-  if (selection.rangeCount > 0 && selection.toString().trim()) {
-    const range = selection.getRangeAt(0);
-    const fragment = range.extractContents();
-    const tempDiv = document.createElement('div');
-    tempDiv.appendChild(fragment);
-    const selectedHTML = tempDiv.innerHTML;
-    const span = document.createElement('span');
-    span.className = 'cloze-edit';
-    span.setAttribute('data-cloze-num', '1');
-    span.innerHTML = selectedHTML;
-    range.insertNode(span);
-    range.setStartAfter(span);
-    range.collapse(true);
-    selection.removeAllRanges();
-    selection.addRange(range);
-  } else {
-    alert('请先选中要遮挡的文字');
-  }
-}
-
-function removeCloze() {
-  const selection = window.getSelection();
-  if (selection.rangeCount > 0) {
-    const range = selection.getRangeAt(0);
-    const container = range.commonAncestorContainer;
-    const clozeBlocks = container.nodeType === 3 ? [] : container.querySelectorAll('.cloze-edit');
-    clozeBlocks.forEach(block => block.replaceWith(...block.childNodes));
-    if (clozeBlocks.length === 0) {
-      let parent = container.nodeType === 3 ? container.parentElement : container;
-      while (parent && !parent.classList?.contains('cloze-edit')) {
-        parent = parent.parentElement;
+    /* ========== Supabase 存储类 ========== */
+    class SupabaseStorage {
+      constructor() {
+        this.supabase = null;
+        this.tableName = 'review_items';
+        this.pagesTable = 'pages';
       }
-      if (parent && parent.classList?.contains('cloze-edit')) {
-        parent.replaceWith(...parent.childNodes);
+
+      async init() {
+        // 先创建客户端
+        this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // 测试连接
+        const { error } = await this.supabase.from(this.tableName).select('id').limit(1);
+        if (error && error.code !== 'PGRST116') {
+          console.warn('Supabase 连接测试失败:', error.message);
+          throw error;
+        }
+        console.log('✅ Supabase 连接成功');
+      }
+
+      // ========== 分页管理方法 ==========
+
+      async getAllPages() {
+        const { data, error } = await this.supabase
+          .from(this.pagesTable)
+          .select('*')
+          .order('sort_order', { ascending: true });
+        if (error) throw error;
+        return data || [];
+      }
+
+      async addPage(name, sortOrder = 0) {
+        const { data, error } = await this.supabase
+          .from(this.pagesTable)
+          .insert([{ name, sort_order: sortOrder }])
+          .select();
+        if (error) throw error;
+        return data?.[0];
+      }
+
+      async updatePage(id, name) {
+        const { error } = await this.supabase
+          .from(this.pagesTable)
+          .update({ name })
+          .eq('id', id);
+        if (error) throw error;
+      }
+
+      async deletePage(id) {
+        // 先删除该分页下的所有项目
+        const { error: itemsError } = await this.supabase
+          .from(this.tableName)
+          .delete()
+          .eq('page_id', id);
+        if (itemsError) throw itemsError;
+
+        // 再删除分页
+        const { error } = await this.supabase
+          .from(this.pagesTable)
+          .delete()
+          .eq('id', id);
+        if (error) throw error;
+      }
+
+      async reorderPages(pageOrders) {
+        // pageOrders 是 [{id, sort_order}, ...] 格式
+        for (const { id, sort_order } of pageOrders) {
+          const { error } = await this.supabase
+            .from(this.pagesTable)
+            .update({ sort_order })
+            .eq('id', id);
+          if (error) throw error;
+        }
+      }
+
+      // ========== 项目管理方法 ==========
+
+      async getAllItems(pageId = null) {
+        let query = this.supabase
+          .from(this.tableName)
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (pageId !== null) {
+          query = query.eq('page_id', pageId);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+        return data || [];
+      }
+
+      async addItem(item) {
+        const dbItem = this.toDbFormat(item);
+        // 不发送 id，让数据库自动生成
+        delete dbItem.id;
+        const { data, error } = await this.supabase
+          .from(this.tableName)
+          .insert([dbItem])
+          .select();
+        if (error) throw error;
+        return data?.[0];
+      }
+
+      async updateItem(id, updates) {
+        const dbUpdates = this.toDbFormat(updates);
+        delete dbUpdates.id;  // 删除 id，避免更新主键导致错误
+        // 注意：review_items 表没有 updated_at 列，不发送此字段
+        const { error } = await this.supabase
+          .from(this.tableName)
+          .update(dbUpdates)
+          .eq('id', id);
+        if (error) throw error;
+      }
+
+      async deleteItem(id) {
+        const { error } = await this.supabase
+          .from(this.tableName)
+          .delete()
+          .eq('id', id);
+        if (error) throw error;
+      }
+
+      async clearAllItems() {
+        const { error } = await this.supabase
+          .from(this.tableName)
+          .delete()
+          .neq('id', 0);
+        if (error) throw error;
+      }
+
+      async clearAllPages() {
+        const { error } = await this.supabase
+          .from(this.pagesTable)
+          .delete()
+          .neq('id', 0);
+        if (error) throw error;
+      }
+
+      toDbFormat(item) {
+        const dbItem = {};
+        if (item.id !== undefined) dbItem.id = item.id;
+        if (item.title !== undefined) dbItem.title = item.title;
+        if (item.content !== undefined) dbItem.content = item.content;
+        if (item.createdAt !== undefined) dbItem.created_at = new Date(item.createdAt).toISOString();
+        if (item.currentInterval !== undefined) dbItem.current_interval = item.currentInterval;
+        if (item.reviewCount !== undefined) dbItem.review_count = item.reviewCount;
+        if (item.nextReview !== undefined) dbItem.next_review = new Date(item.nextReview).toISOString();
+        if (item.completedReviews !== undefined) dbItem.completed_reviews = item.completedReviews.map(d => new Date(d).toISOString());
+        if (item.easeFactor !== undefined) dbItem.ease_factor = item.easeFactor;
+        if (item.lastIntervalDays !== undefined) dbItem.last_interval_days = item.lastIntervalDays;
+        if (item.pageId !== undefined) dbItem.page_id = item.pageId;
+        return dbItem;
+      }
+
+      fromDbFormat(dbItem) {
+        return {
+          id: dbItem.id,
+          title: dbItem.title,
+          content: dbItem.content,
+          createdAt: new Date(dbItem.created_at),
+          currentInterval: dbItem.current_interval || 0,
+          reviewCount: dbItem.review_count || 0,
+          nextReview: new Date(dbItem.next_review),
+          completedReviews: (dbItem.completed_reviews || []).map(d => new Date(d)),
+          easeFactor: dbItem.ease_factor || 2.5,
+          lastIntervalDays: dbItem.last_interval_days || 0,
+          pageId: dbItem.page_id || null
+        };
+      }
+
+      // 分页格式转换
+      fromDbPageFormat(dbPage) {
+        return {
+          id: dbPage.id,
+          name: dbPage.name,
+          createdAt: new Date(dbPage.created_at),
+          sortOrder: dbPage.sort_order || 0
+        };
       }
     }
-  }
-}
 
-function addEditCloze(itemId) {
-  addCloze();
-}
+    /* ========== 全局富文本编辑工具函数 ========== */
+    /* 修复点 1：将 value = null 改为 value = null，解决 Uncaught SyntaxError: Unexpected token '=' 导致全部 JS 瘫痪的问题 */
+    function formatDoc(cmd, value = null) {
+      document.execCommand(cmd, false, value);
+      const editor = document.getElementById('content');
+      if (editor) editor.focus();
+    }
 
-function removeEditCloze(itemId) {
-  removeCloze();
-}
+    // 切换下拉菜单显示
+    function toggleDropdown(menuId) {
+      const menu = document.getElementById(menuId);
+      if (!menu) return;
 
-document.addEventListener('keydown', (e) => {
-  if (e.target.classList.contains('editor-content')) {
-    if (e.ctrlKey || e.metaKey) {
-      switch(e.key.toLowerCase()) {
-        case 'b': e.preventDefault(); formatDoc('bold'); break;
-        case 'i': e.preventDefault(); formatDoc('italic'); break;
-        case 'u': e.preventDefault(); formatDoc('underline'); break;
+      const isOpen = menu.classList.contains('show');
+
+      // 关闭所有下拉菜单
+      document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+
+      // 如果之前未打开，则打开当前菜单
+      if (!isOpen) {
+        menu.classList.add('show');
       }
     }
-  }
-});
 
-/* ========== 主应用 ========== */
-class EbbinghausReviewSystem {
-  constructor() {
-    this.reviewIntervals = [1, 2, 4, 7, 15, 30, 60];
-    this.storage = new SupabaseStorage();
-    this.editingId = null;
-    this.slideState = {};
-    this.reviewItems = [];
-
-    // 分页相关状态
-    this.pages = [];
-    this.currentPageId = null;
-    this.draggedPageId = null;
-    this.renamingPageId = null;
-
-    // 确认弹窗回调
-    this._modalConfirmCallback = null;
-    this._modalCancelCallback = null;
-  }
-
-  async init() {
-    try {
-      await this.storage.init();
-      await this.loadPages();
-      await this.loadData();
-      this.initEventListeners();
-      this.setupRealtimeSync();  // 启动实时同步
-      this.renderPageList();
-      this.render();
-      this.updateStats();
-      this.updateBellReminder();
-      this.updateConnectionStatus(true);
-      console.log('✅ Supabase 数据加载成功');
-    } catch (e) {
-      console.error('初始化失败，回退到本地存储:', e);
-      this.updateConnectionStatus(false);
-      this.loadLocalPagesBackup();
-      this.loadLocalBackup();
-      this.initEventListeners();
-      this.renderPageList();
-      this.render();
-      this.updateStats();
-      this.updateBellReminder();
-    }
-  }
-
-  // ========== 分页管理方法 ==========
-
-  async loadPages() {
-    const pages = await this.storage.getAllPages();
-    this.pages = pages.map(p => this.storage.fromDbPageFormat(p));
-
-    // 如果没有分页，创建默认分页
-    if (this.pages.length === 0) {
-      const defaultPage = await this.storage.addPage('默认分页', 0);
-      this.pages = [this.storage.fromDbPageFormat(defaultPage)];
-    }
-
-    // 设置当前分页为第一个
-    if (!this.currentPageId && this.pages.length > 0) {
-      this.currentPageId = this.pages[0].id;
-    }
-
-    // 备份到本地
-    this.backupToLocalStorage();
-  }
-
-  async switchPage(pageId) {
-    if (this.editingId) {
-      this.cancelEdit(this.editingId);
-    }
-    this.currentPageId = pageId;
-    this.slideState = {}; // 重置卡片索引状态
-    await this.loadData();
-    this.renderPageList();
-    this.render();
-    this.updateStats();
-    this.updateBellReminder();
-
-    // 移动端自动收起侧边栏
-    if (window.innerWidth <= 768) {
-      document.getElementById('sidebar').classList.remove('open');
-    }
-  }
-
-  async createPage() {
-    this.showConfirmModal("新建分页", "", async (name) => {
-      try {
-        this.showNotification('正在创建...');
-        const sortOrder = this.pages.length;
-
-        // 核心修复：等待 Supabase 返回包含 ID 的真实对象
-        const newPageData = await this.storage.addPage(name, sortOrder);
-        if (!newPageData) throw new Error("服务器未返回数据");
-
-        const page = this.storage.fromDbPageFormat(newPageData);
-        this.pages.push(page);
-
-        this.renderPageList();
-        await this.switchPage(page.id);
-        this.showNotification('✅ 分页创建成功');
-      } catch (e) {
-        console.error('创建失败:', e);
-        this.showNotification('❌ 创建失败：请检查数据库连接', true);
+    // 设置字体大小
+    function setFontSize(fontSize) {
+      document.execCommand('styleWithCSS', false, true);
+      // 使用 fontSize 指令先标记选中区域，然后替换为 span 以支持精确 px
+      document.execCommand('fontSize', false, '7');
+      const fontElements = document.getElementsByTagName('font');
+      for (let i = 0; i < fontElements.length; i++) {
+        if (fontElements[i].size === '7') {
+          fontElements[i].removeAttribute('size');
+          fontElements[i].style.fontSize = fontSize;
+        }
       }
-    }, true, "新分页"); // 开启输入模式，默认值"新分页"
-  }
+      // 同样处理 span（由于 styleWithCSS 可能生成 span）
+      const spans = document.getElementsByTagName('span');
+      for (let i = 0; i < spans.length; i++) {
+        const size = spans[i].style.fontSize;
+        if (size === 'xxx-large' || size === '48px' || size === '-webkit-xxx-large') {
+          spans[i].style.fontSize = fontSize;
+        }
+      }
 
-  async deletePage(pageId) {
-    const page = this.pages.find(p => p.id === pageId);
-    if (!page) return;
+      // 更新按钮显示的字号
+      const currentFontSize = document.getElementById('currentFontSize');
+      if (currentFontSize) currentFontSize.textContent = fontSize;
 
-    // 检查是否是最后一个分页
-    if (this.pages.length <= 1) {
-      this.showNotification('⚠️ 至少需要保留一个分页', true);
-      return;
+      // 更新下拉项激活状态
+      const menu = document.getElementById('font-size-menu');
+      if (menu) {
+        menu.querySelectorAll('.dropdown-item').forEach(item => {
+          item.classList.toggle('active', item.textContent.includes(fontSize));
+        });
+      }
+
+      // 关闭全部下拉菜单
+      document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
     }
 
-    this.showConfirmModal(
-      "确定要删除吗？",
-      `分页「${page.name}」及其下的所有复习内容将被永久删除，不可恢复。`,
-      async () => {
-        try {
-          await this.storage.deletePage(pageId);
-          this.pages = this.pages.filter(p => p.id !== pageId);
+    // 设置突出显示（荧光笔）
+    function setHighlight(color) {
+      document.execCommand('styleWithCSS', false, true);
+      document.execCommand('backColor', false, color);
+      const editor = document.getElementById('content');
+      if (editor) editor.focus();
 
-          // 如果删除的是当前分页，切换到第一个
-          if (this.currentPageId === pageId) {
-            this.currentPageId = this.pages[0]?.id;
-            await this.loadData();
+      // 更新下拉项激活状态
+      const menu = document.getElementById('highlight-menu');
+      if (menu) {
+        menu.querySelectorAll('.dropdown-item').forEach(item => {
+          const onclickAttr = item.getAttribute('onclick') || '';
+          item.classList.toggle('active', onclickAttr.includes(color));
+        });
+      }
+
+      // 关闭全部下拉菜单
+      document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+    }
+
+    function addCloze() {
+      const selection = window.getSelection();
+      if (selection.rangeCount > 0 && selection.toString().trim()) {
+        const range = selection.getRangeAt(0);
+        const fragment = range.extractContents();
+        const tempDiv = document.createElement('div');
+        tempDiv.appendChild(fragment);
+        const selectedHTML = tempDiv.innerHTML;
+        const span = document.createElement('span');
+        span.className = 'cloze-edit';
+        span.setAttribute('data-cloze-num', '1');
+        span.innerHTML = selectedHTML;
+        range.insertNode(span);
+        range.setStartAfter(span);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      } else {
+        alert('请先选中要遮挡的文字');
+      }
+    }
+
+    function removeCloze() {
+      const selection = window.getSelection();
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const container = range.commonAncestorContainer;
+        const clozeBlocks = container.nodeType === 3 ? [] : container.querySelectorAll('.cloze-edit');
+        clozeBlocks.forEach(block => block.replaceWith(...block.childNodes));
+        if (clozeBlocks.length === 0) {
+          let parent = container.nodeType === 3 ? container.parentElement : container;
+          while (parent && !parent.classList?.contains('cloze-edit')) {
+            parent = parent.parentElement;
           }
+          if (parent && parent.classList?.contains('cloze-edit')) {
+            parent.replaceWith(...parent.childNodes);
+          }
+        }
+      }
+    }
 
+    function updateEditCloze(itemId) {
+      // Nothing needed yet
+    }
+
+    // 实时更新工具栏状态 (嗅探光标处的样式)
+    function updateToolbarUI(editorElem, toolbarPrefix = '') {
+      try {
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+
+        let node = selection.anchorNode;
+        if (node.nodeType === 3) node = node.parentNode; // 如果是文本节点，取其父元素
+
+        const style = window.getComputedStyle(node);
+
+        // 1. 更新字号显示
+        let fontSize = style.fontSize;
+        // 如果是 px 值，尝试匹配预设列表
+        const fontBtn = document.getElementById(toolbarPrefix ? `current-font-${toolbarPrefix}` : 'currentFontSize');
+        if (fontBtn) {
+          fontBtn.textContent = fontSize;
+          // 同时更新下拉菜单 active 状态
+          const menuId = toolbarPrefix ? `font-size-menu-${toolbarPrefix}` : 'font-size-menu';
+          const menu = document.getElementById(menuId);
+          if (menu) {
+            menu.querySelectorAll('.dropdown-item').forEach(item => {
+              item.classList.toggle('active', item.textContent.includes(fontSize));
+            });
+          }
+        }
+
+        // 2. 更新高亮状态 (可选，增加体验)
+        const bgColor = style.backgroundColor;
+        const highlightMenuId = toolbarPrefix ? `highlight-menu-${toolbarPrefix}` : 'highlight-menu';
+        const hMenu = document.getElementById(highlightMenuId);
+        if (hMenu && bgColor && bgColor !== 'rgba(0, 0, 0, 0)' && bgColor !== 'transparent') {
+          hMenu.querySelectorAll('.dropdown-item').forEach(item => {
+            const onclickAttr = item.getAttribute('onclick') || '';
+            // 将 RGB 转换为 Hex 的比较比较复杂，这里简单使用 includes(color)
+            // 实际上由于颜色是预设的，检查特定的类名或 data 属性更好，但目前系统基于 onclick 字符串
+          });
+        }
+      } catch (e) {
+        console.error('更新工具栏失败:', e);
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.target.classList.contains('editor-content')) {
+        if (e.ctrlKey || e.metaKey) {
+          switch (e.key.toLowerCase()) {
+            case 'b': e.preventDefault(); formatDoc('bold'); break;
+            case 'i': e.preventDefault(); formatDoc('italic'); break;
+            case 'u': e.preventDefault(); formatDoc('underline'); break;
+          }
+        }
+        // 延迟触发状态更新，确保 DOM 已响应
+        setTimeout(() => {
+          const isCard = e.target.closest('.review-item');
+          if (isCard) {
+            const id = isCard.id.replace('item-', '');
+            updateToolbarUI(e.target, id);
+          } else {
+            updateToolbarUI(e.target);
+          }
+        }, 10);
+      }
+    });
+
+    // 监听鼠标点击/释放，更新样式嗅探
+    document.addEventListener('mouseup', (e) => {
+      const editor = e.target.closest('.editor-content');
+      if (editor) {
+        const isCard = editor.closest('.review-item');
+        if (isCard) {
+          const id = isCard.id.replace('item-', '');
+          updateToolbarUI(editor, id);
+        } else {
+          updateToolbarUI(editor);
+        }
+      }
+    });
+
+    // 监听全局选区变化 (更彻底的选择嗅探)
+    document.addEventListener('selectionchange', () => {
+      const selection = window.getSelection();
+      if (selection.rangeCount > 0) {
+        const container = selection.getRangeAt(0).commonAncestorContainer;
+        const editor = container.nodeType === 3 ? container.parentElement.closest('.editor-content') : container.closest('.editor-content');
+        if (editor) {
+          const isCard = editor.closest('.review-item');
+          if (isCard) {
+            const id = isCard.id.replace('item-', '');
+            updateToolbarUI(editor, id);
+          } else {
+            updateToolbarUI(editor);
+          }
+        }
+      }
+    });
+
+    /* ========== 主应用 ========== */
+    class EbbinghausReviewSystem {
+      constructor() {
+        this.reviewIntervals = [1, 2, 4, 7, 15, 30, 60];
+        this.storage = new SupabaseStorage();
+        this.editingId = null;
+        this.slideState = {};
+        this.reviewItems = [];
+        this.allReviewItems = []; // 用于侧边栏全局计数
+
+        // 分页相关状态
+        this.pages = [];
+        this.currentPageId = null;
+        this.draggedPageId = null;
+        this.renamingPageId = null;
+
+        // 搜索相关状态
+        this.currentSearchQuery = '';
+        this.searchDebounceTimer = null;
+
+        // 确认弹窗回调
+        this._modalConfirmCallback = null;
+        this._modalCancelCallback = null;
+      }
+
+      async init() {
+        try {
+          await this.storage.init();
+          await this.loadPages();
+          await this.loadData();
+          this.initEventListeners();
+          this.setupRealtimeSync();  // 启动实时同步
           this.renderPageList();
           this.render();
           this.updateStats();
           this.updateBellReminder();
-          this.showNotification('🗑️ 分页已成功删除');
+          this.updateConnectionStatus(true);
+          console.log('✅ Supabase 数据加载成功');
         } catch (e) {
-          console.error('删除分页失败:', e);
-          this.showNotification('❌ 删除失败', true);
+          console.error('初始化失败，回退到本地存储:', e);
+          this.updateConnectionStatus(false);
+          this.loadLocalPagesBackup();
+          this.loadLocalBackup();
+          this.initEventListeners();
+          this.renderPageList();
+          this.render();
+          this.updateStats();
+          this.updateBellReminder();
         }
       }
-    );
-  }
 
-  startRenamePage(pageId) {
-    this.renamingPageId = pageId;
-    this.renderPageList();
+      // ========== 分页管理方法 ==========
 
-    // 聚焦输入框并选中文字
-    setTimeout(() => {
-      const input = document.querySelector(`[data-page-id="${pageId}"] .page-rename-input`);
-      if (input) {
-        input.focus();
-        input.select();
+      async loadPages() {
+        const pages = await this.storage.getAllPages();
+        this.pages = pages.map(p => this.storage.fromDbPageFormat(p));
+
+        // 如果没有分页，创建默认分页
+        if (this.pages.length === 0) {
+          const defaultPage = await this.storage.addPage('默认分页', 0);
+          this.pages = [this.storage.fromDbPageFormat(defaultPage)];
+        }
+
+        // 设置当前分页为第一个
+        if (!this.currentPageId && this.pages.length > 0) {
+          this.currentPageId = this.pages[0].id;
+        }
+
+        // 备份到本地
+        this.backupToLocalStorage();
       }
-    }, 0);
-  }
 
-  async finishRenamePage(pageId, newName) {
-    if (!newName || !newName.trim()) {
-      this.renamingPageId = null;
-      this.renderPageList();
-      return;
-    }
+      async switchPage(pageId) {
+        if (this.editingId) {
+          this.cancelEdit(this.editingId);
+        }
+        this.currentPageId = pageId;
+        this.slideState = {}; // 重置卡片索引状态
+        await this.loadData();
+        this.renderPageList();
+        this.render();
+        this.updateStats();
+        this.updateBellReminder();
 
-    const trimmedName = newName.trim();
-    const page = this.pages.find(p => p.id === pageId);
-
-    if (page && page.name !== trimmedName) {
-      try {
-        await this.storage.updatePage(pageId, trimmedName);
-        page.name = trimmedName;
-        this.showNotification('✅ 分页重命名成功');
-      } catch (e) {
-        console.error('重命名失败:', e);
-        this.showNotification('❌ 重命名失败', true);
+        // 移动端自动收起侧边栏
+        if (window.innerWidth <= 768) {
+          document.getElementById('sidebar').classList.remove('open');
+        }
       }
-    }
 
-    this.renamingPageId = null;
-    this.renderPageList();
-  }
+      async createPage() {
+        this.showConfirmModal("新建分页", "", async (name) => {
+          try {
+            this.showNotification('正在创建...');
+            const sortOrder = this.pages.length;
 
-  // ========== 拖拽排序方法 ==========
+            // 核心修复：等待 Supabase 返回包含 ID 的真实对象
+            const newPageData = await this.storage.addPage(name, sortOrder);
+            if (!newPageData) throw new Error("服务器未返回数据");
 
-  onDragStart(pageId, e) {
-    this.draggedPageId = pageId;
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', pageId.toString());
+            const page = this.storage.fromDbPageFormat(newPageData);
+            this.pages.push(page);
 
-    // 延迟添加拖拽样式，避免立即触发
-    setTimeout(() => {
-      const tab = document.querySelector(`[data-page-id="${pageId}"]`);
-      if (tab) tab.classList.add('dragging');
-    }, 0);
-  }
+            this.renderPageList();
+            await this.switchPage(page.id);
+            this.showNotification('✅ 分页创建成功');
+          } catch (e) {
+            console.error('创建失败:', e);
+            this.showNotification('❌ 创建失败：请检查数据库连接', true);
+          }
+        }, true, "新分页"); // 开启输入模式，默认值"新分页"
+      }
 
-  onDragEnd(pageId) {
-    const tab = document.querySelector(`[data-page-id="${pageId}"]`);
-    if (tab) tab.classList.remove('dragging');
-    this.draggedPageId = null;
+      async deletePage(pageId) {
+        const page = this.pages.find(p => p.id === pageId);
+        if (!page) return;
 
-    // 移除所有 drag-over 样式
-    document.querySelectorAll('.page-tab.drag-over').forEach(el => {
-      el.classList.remove('drag-over');
-    });
-  }
+        // 检查是否是最后一个分页
+        if (this.pages.length <= 1) {
+          this.showNotification('⚠️ 至少需要保留一个分页', true);
+          return;
+        }
 
-  onDragOver(pageId, e) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+        this.showConfirmModal(
+          "确定要删除吗？",
+          `分页「${page.name}」及其下的所有复习内容将被永久删除，不可恢复。`,
+          async () => {
+            try {
+              await this.storage.deletePage(pageId);
+              this.pages = this.pages.filter(p => p.id !== pageId);
 
-    if (this.draggedPageId && this.draggedPageId !== pageId) {
-      const tab = document.querySelector(`[data-page-id="${pageId}"]`);
-      if (tab) tab.classList.add('drag-over');
-    }
-  }
+              // 如果删除的是当前分页，切换到第一个
+              if (this.currentPageId === pageId) {
+                this.currentPageId = this.pages[0]?.id;
+                await this.loadData();
+              }
 
-  onDragLeave(pageId, e) {
-    const tab = document.querySelector(`[data-page-id="${pageId}"]`);
-    if (tab) tab.classList.remove('drag-over');
-  }
+              this.renderPageList();
+              this.render();
+              this.updateStats();
+              this.updateBellReminder();
+              this.showNotification('🗑️ 分页已成功删除');
+            } catch (e) {
+              console.error('删除分页失败:', e);
+              this.showNotification('❌ 删除失败', true);
+            }
+          }
+        );
+      }
 
-  async onDrop(targetPageId, e) {
-    e.preventDefault();
+      startRenamePage(pageId) {
+        this.renamingPageId = pageId;
+        this.renderPageList();
 
-    if (!this.draggedPageId || this.draggedPageId === targetPageId) return;
+        // 聚焦输入框并选中文字
+        setTimeout(() => {
+          const input = document.querySelector(`[data-page-id="${pageId}"] .page-rename-input`);
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }, 0);
+      }
 
-    // 移除 drag-over 样式
-    const tab = document.querySelector(`[data-page-id="${targetPageId}"]`);
-    if (tab) tab.classList.remove('drag-over');
+      async finishRenamePage(pageId, newName) {
+        if (!newName || !newName.trim()) {
+          this.renamingPageId = null;
+          this.renderPageList();
+          return;
+        }
 
-    // 重新排序
-    const draggedIndex = this.pages.findIndex(p => p.id === this.draggedPageId);
-    const targetIndex = this.pages.findIndex(p => p.id === targetPageId);
+        const trimmedName = newName.trim();
+        const page = this.pages.find(p => p.id === pageId);
 
-    if (draggedIndex === -1 || targetIndex === -1) return;
+        if (page && page.name !== trimmedName) {
+          try {
+            await this.storage.updatePage(pageId, trimmedName);
+            page.name = trimmedName;
+            this.showNotification('✅ 分页重命名成功');
+          } catch (e) {
+            console.error('重命名失败:', e);
+            this.showNotification('❌ 重命名失败', true);
+          }
+        }
 
-    // 移动元素
-    const [draggedPage] = this.pages.splice(draggedIndex, 1);
-    this.pages.splice(targetIndex, 0, draggedPage);
+        this.renamingPageId = null;
+        this.renderPageList();
+      }
 
-    // 更新排序
-    try {
-      const pageOrders = this.pages.map((p, index) => ({
-        id: p.id,
-        sort_order: index
-      }));
-      await this.storage.reorderPages(pageOrders);
-      this.renderPageList();
-      this.showNotification('✅ 分页排序已更新');
-    } catch (e) {
-      console.error('排序更新失败:', e);
-      this.showNotification('❌ 排序更新失败', true);
-    }
-  }
+      // ========== 拖拽排序方法 ==========
 
-  // ========== 确认弹窗方法 ==========
+      onDragStart(pageId, e) {
+        this.draggedPageId = pageId;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', pageId.toString());
 
-  showConfirmModal(title, message, onConfirm, isInput = false, defaultValue = "") {
-    const modal = document.getElementById('confirmModal');
-    const msgArea = document.getElementById('modalMessage');
-    const confirmBtn = document.getElementById('modalConfirmBtn');
+        // 延迟添加拖拽样式，避免立即触发
+        setTimeout(() => {
+          const tab = document.querySelector(`[data-page-id="${pageId}"]`);
+          if (tab) tab.classList.add('dragging');
+        }, 0);
+      }
 
-    document.getElementById('modalTitle').textContent = title;
+      onDragEnd(pageId) {
+        const tab = document.querySelector(`[data-page-id="${pageId}"]`);
+        if (tab) tab.classList.remove('dragging');
+        this.draggedPageId = null;
 
-    if (isInput) {
-      // 输入框模式
-      msgArea.innerHTML = `
+        // 移除所有 drag-over 样式
+        document.querySelectorAll('.page-tab.drag-over').forEach(el => {
+          el.classList.remove('drag-over');
+        });
+      }
+
+      onDragOver(pageId, e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        if (this.draggedPageId && this.draggedPageId !== pageId) {
+          const tab = document.querySelector(`[data-page-id="${pageId}"]`);
+          if (tab) tab.classList.add('drag-over');
+        }
+      }
+
+      onDragLeave(pageId, e) {
+        const tab = document.querySelector(`[data-page-id="${pageId}"]`);
+        if (tab) tab.classList.remove('drag-over');
+      }
+
+      async onDrop(targetPageId, e) {
+        e.preventDefault();
+
+        if (!this.draggedPageId || this.draggedPageId === targetPageId) return;
+
+        // 移除 drag-over 样式
+        const tab = document.querySelector(`[data-page-id="${targetPageId}"]`);
+        if (tab) tab.classList.remove('drag-over');
+
+        // 重新排序
+        const draggedIndex = this.pages.findIndex(p => p.id === this.draggedPageId);
+        const targetIndex = this.pages.findIndex(p => p.id === targetPageId);
+
+        if (draggedIndex === -1 || targetIndex === -1) return;
+
+        // 移动元素
+        const [draggedPage] = this.pages.splice(draggedIndex, 1);
+        this.pages.splice(targetIndex, 0, draggedPage);
+
+        // 更新排序
+        try {
+          const pageOrders = this.pages.map((p, index) => ({
+            id: p.id,
+            sort_order: index
+          }));
+          await this.storage.reorderPages(pageOrders);
+          this.renderPageList();
+          this.showNotification('✅ 分页排序已更新');
+        } catch (e) {
+          console.error('排序更新失败:', e);
+          this.showNotification('❌ 排序更新失败', true);
+        }
+      }
+
+      // ========== 确认弹窗方法 ==========
+
+      showConfirmModal(title, message, onConfirm, isInput = false, defaultValue = "") {
+        const modal = document.getElementById('confirmModal');
+        const msgArea = document.getElementById('modalMessage');
+        const confirmBtn = document.getElementById('modalConfirmBtn');
+
+        document.getElementById('modalTitle').textContent = title;
+
+        if (isInput) {
+          // 输入框模式
+          msgArea.innerHTML = `
         <input type="text" id="modalInput" class="edit-input"
                value="${defaultValue}" placeholder="请输入名称..."
                style="width:100%; margin-top:10px; padding:10px; border:2px solid #4facfe; border-radius:8px; font-size:16px;">`;
-      confirmBtn.textContent = "确认";
-      confirmBtn.className = "btn btn-success";
-      setTimeout(() => document.getElementById('modalInput').focus(), 200);
-    } else {
-      // 普通确认模式
-      msgArea.textContent = message;
-      confirmBtn.textContent = "确认删除";
-      confirmBtn.className = "btn btn-danger";
-    }
+          confirmBtn.textContent = "确认";
+          confirmBtn.className = "btn btn-success";
+          setTimeout(() => document.getElementById('modalInput').focus(), 200);
+        } else {
+          // 普通确认模式
+          msgArea.textContent = message;
+          confirmBtn.textContent = "确认删除";
+          confirmBtn.className = "btn btn-danger";
+        }
 
-    // 保存回调（支持输入值）
-    this._modalConfirmCallback = async () => {
-      const value = isInput ? document.getElementById('modalInput')?.value.trim() : null;
-      if (isInput && !value) return; // 输入模式下不能为空
-      await onConfirm(value);
-    };
+        // 保存回调（支持输入值）
+        this._modalConfirmCallback = async () => {
+          const value = isInput ? document.getElementById('modalInput')?.value.trim() : null;
+          if (isInput && !value) return; // 输入模式下不能为空
+          await onConfirm(value);
+        };
 
-    modal.classList.add('show');
-  }
+        modal.classList.add('show');
+      }
 
-  hideConfirmModal() {
-    const modal = document.getElementById('confirmModal');
-    modal.classList.remove('show');
-    this._modalConfirmCallback = null;
-  }
+      hideConfirmModal() {
+        const modal = document.getElementById('confirmModal');
+        modal.classList.remove('show');
+        this._modalConfirmCallback = null;
+      }
 
-  onModalConfirm() {
-    const callback = this._modalConfirmCallback;
-    this.hideConfirmModal();
-    if (callback) callback();
-  }
+      onModalConfirm() {
+        const callback = this._modalConfirmCallback;
+        this.hideConfirmModal();
+        if (callback) callback();
+      }
 
-  onModalCancel() {
-    this.hideConfirmModal();
-  }
+      onModalCancel() {
+        this.hideConfirmModal();
+      }
 
-  // ========== 分页列表渲染（侧边栏） ==========
+      // ========== 分页列表渲染（侧边栏） ==========
 
-  renderPageList() {
-    const list = document.getElementById('pageList');
-    if (!list) return;
+      renderPageList() {
+        const list = document.getElementById('pageList');
+        if (!list) return;
 
-    // 清空列表
-    list.innerHTML = '';
+        // 清空列表
+        list.innerHTML = '';
 
-    if (this.pages.length === 0) {
-      const emptyDiv = document.createElement('div');
-      emptyDiv.style.cssText = 'padding:20px;color:#999;text-align:center;';
-      emptyDiv.textContent = '暂无分区';
-      list.appendChild(emptyDiv);
-      return;
-    }
+        if (this.pages.length === 0) {
+          const emptyDiv = document.createElement('div');
+          emptyDiv.style.cssText = 'padding:20px;color:#999;text-align:center;';
+          emptyDiv.textContent = '暂无分区';
+          list.appendChild(emptyDiv);
+          return;
+        }
 
-    // 使用 DOM 元素而非 innerHTML，确保事件绑定正确
-    this.pages.forEach(page => {
-      const isActive = page.id === this.currentPageId;
-      const isRenaming = page.id === this.renamingPageId;
+        // 使用 DOM 元素而非 innerHTML，确保事件绑定正确
+        this.pages.forEach(page => {
+          const isActive = page.id === this.currentPageId;
+          const isRenaming = page.id === this.renamingPageId;
 
-      const item = document.createElement('div');
-      item.className = `page-item ${isActive ? 'active' : ''}`;
-      item.dataset.pageId = page.id;
+          const item = document.createElement('div');
+          item.className = `page-item ${isActive ? 'active' : ''}`;
+          item.dataset.pageId = page.id;
 
-      const icon = document.createElement('span');
-      icon.className = 'page-item-icon';
-      icon.textContent = '📁';
-      item.appendChild(icon);
+          const icon = document.createElement('span');
+          icon.className = 'page-item-icon';
+          icon.textContent = '📁';
+          item.appendChild(icon);
 
-      if (isRenaming) {
-        item.classList.add('active');
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'page-rename-input';
-        input.value = page.name;
-
-        input.addEventListener('blur', () => {
-          this.finishRenamePage(page.id, input.value);
-        });
-        input.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') input.blur();
-          if (e.key === 'Escape') {
+          if (isRenaming) {
+            item.classList.add('active');
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'page-rename-input';
             input.value = page.name;
-            input.blur();
-          }
-        });
 
-        item.appendChild(input);
-        // 自动聚焦
-        setTimeout(() => input.focus(), 10);
-      } else {
-        item.appendChild(document.createTextNode(' ' + page.name));
+            input.addEventListener('blur', () => {
+              this.finishRenamePage(page.id, input.value);
+            });
+            input.addEventListener('keydown', (e) => {
+              if (e.key === 'Enter') input.blur();
+              if (e.key === 'Escape') {
+                input.value = page.name;
+                input.blur();
+              }
+            });
 
-        // 使用 addEventListener 绑定事件
-        item.addEventListener('click', () => {
-          // 只有点击非当前页面时才切换，避免双击重命名时被干扰
-          if (page.id !== this.currentPageId) {
-            this.switchPage(page.id);
+            item.appendChild(input);
+            // 自动聚焦
+            setTimeout(() => input.focus(), 10);
+          } else {
+            const nameSpan = document.createElement('span');
+            nameSpan.style.cssText = 'flex:1; overflow:hidden; text-overflow:ellipsis;';
+            nameSpan.textContent = ' ' + page.name;
+            item.appendChild(nameSpan);
+
+            // 添加复习数量徽章
+            const reviewCount = this.getPageReviewCount(page.id);
+            if (reviewCount >= 0) {
+              const countBadge = document.createElement('span');
+              let badgeClass = 'empty';
+              if (reviewCount > 0) {
+                const urgentCount = this.getPageUrgentCount(page.id);
+                badgeClass = urgentCount > 0 ? 'urgent' : 'today';
+              }
+              countBadge.className = `page-review-count ${badgeClass}`;
+
+              const countNum = document.createElement('span');
+              countNum.className = 'count-num';
+              countNum.textContent = reviewCount;
+              countBadge.appendChild(countNum);
+
+              // 有紧急复习时添加🔥图标
+              if (badgeClass === 'urgent') {
+                const fireIcon = document.createElement('span');
+                fireIcon.className = 'count-icon';
+                fireIcon.textContent = '🔥';
+                countBadge.appendChild(fireIcon);
+              }
+
+              item.appendChild(countBadge);
+            }
+
+            // 使用 addEventListener 绑定事件
+            item.addEventListener('click', () => {
+              // 只有点击非当前页面时才切换，避免双击重命名时被干扰
+              if (page.id !== this.currentPageId) {
+                this.switchPage(page.id);
+              }
+            });
+            item.addEventListener('dblclick', (e) => {
+              e.stopPropagation();
+              this.startRenamePage(page.id);
+            });
+            item.addEventListener('contextmenu', (e) => {
+              this.showContextMenu(e, page.id);
+            });
           }
-        });
-        item.addEventListener('dblclick', (e) => {
-          e.stopPropagation();
-          this.startRenamePage(page.id);
-        });
-        item.addEventListener('contextmenu', (e) => {
-          this.showContextMenu(e, page.id);
+
+          list.appendChild(item);
         });
       }
 
-      list.appendChild(item);
-    });
-  }
+      // ========== 分页计数辅助方法 ==========
 
-  // ========== 右键菜单方法 ==========
+      getPageUrgentCount(pageId) {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        return this.allReviewItems.filter(i =>
+          i.pageId === pageId && i.nextReview < today
+        ).length;
+      }
 
-  showContextMenu(e, pageId) {
-    e.preventDefault();
-    const menu = document.getElementById('contextMenu');
-    const page = this.pages.find(p => p.id === pageId);
+      getPageTodayCount(pageId) {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+        return this.allReviewItems.filter(i => {
+          const d = new Date(i.nextReview);
+          return i.pageId === pageId &&
+            d >= today && d < tomorrow;
+        }).length;
+      }
 
-    menu.innerHTML = `
+      getPageReviewCount(pageId) {
+        return this.getPageUrgentCount(pageId) + this.getPageTodayCount(pageId);
+      }
+
+      // ========== 右键菜单方法 ==========
+
+      showContextMenu(e, pageId) {
+        e.preventDefault();
+        const menu = document.getElementById('contextMenu');
+        const page = this.pages.find(p => p.id === pageId);
+
+        menu.innerHTML = `
       <div class="context-menu-item" onclick="reviewSystem.startRenamePage(${pageId}); reviewSystem.hideContextMenu();">
         ✏️ 重命名
       </div>
@@ -1397,753 +2517,897 @@ class EbbinghausReviewSystem {
       </div>
     `;
 
-    menu.style.display = 'block';
-    menu.style.left = `${e.clientX}px`;
-    menu.style.top = `${e.clientY}px`;
+        menu.style.display = 'block';
+        menu.style.left = `${e.clientX}px`;
+        menu.style.top = `${e.clientY}px`;
 
-    // 点击其他地方关闭
-    const hide = () => {
-      menu.style.display = 'none';
-      document.removeEventListener('click', hide);
-    };
-    setTimeout(() => document.addEventListener('click', hide), 10);
-  }
-
-  hideContextMenu() {
-    document.getElementById('contextMenu').style.display = 'none';
-  }
-
-  // ========== 齿轮菜单方法 ==========
-
-  toggleGearMenu(e) {
-    e.stopPropagation();
-    const menu = document.getElementById('gearMenu');
-    menu.classList.toggle('show');
-
-    // 点击其他地方关闭菜单
-    if (menu.classList.contains('show')) {
-      const closeMenu = (evt) => {
-        if (!menu.contains(evt.target)) {
-          menu.classList.remove('show');
-          document.removeEventListener('click', closeMenu);
-        }
-      };
-      setTimeout(() => document.addEventListener('click', closeMenu), 10);
-    }
-  }
-
-  // ========== 同步功能方法 ==========
-
-  // 手动同步刷新
-  async syncRefresh() {
-    try {
-      this.showNotification('正在同步...');
-      await this.loadPages();
-      await this.loadData();
-      this.renderPageList();
-      this.render();
-      this.updateStats();
-      this.updateBellReminder();
-      this.showNotification('✅ 同步成功');
-    } catch (e) {
-      console.error('同步失败:', e);
-      this.showNotification('❌ 同步失败', true);
-    }
-  }
-
-  // 设置实时同步
-  setupRealtimeSync() {
-    console.log('正在设置 Realtime 订阅...');
-
-    // 订阅 review_items 表变更
-    this.storage.supabase
-      .channel('review-items-changes')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'review_items' },
-        (payload) => {
-          console.log('🔔 Realtime 事件 - review_items:', payload.eventType, payload);
-          this.handleItemChange(payload);
-        }
-      )
-      .subscribe((status) => {
-        console.log('📡 review_items 订阅状态:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Realtime 订阅成功：review_items');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Realtime 订阅失败：review_items - 可能需要在 Supabase 启用 Realtime');
-        }
-      });
-
-    // 订阅 pages 表变更
-    this.storage.supabase
-      .channel('pages-changes')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'pages' },
-        (payload) => {
-          console.log('🔔 Realtime 事件 - pages:', payload.eventType, payload);
-          this.handlePageChange(payload);
-        }
-      )
-      .subscribe((status) => {
-        console.log('📡 pages 订阅状态:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ Realtime 订阅成功：pages');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ Realtime 订阅失败：pages - 可能需要在 Supabase 启用 Realtime');
-        }
-      });
-  }
-
-  // 处理 review_items 变更
-  async handleItemChange(payload) {
-    console.log('收到项目变更:', payload.eventType);
-    // 重新加载当前分页数据并刷新界面
-    await this.loadData();
-    this.render();
-    this.updateStats();
-    this.updateBellReminder();
-  }
-
-  // 处理 pages 变更
-  async handlePageChange(payload) {
-    console.log('收到分页变更:', payload.eventType);
-    await this.loadPages();
-    this.renderPageList();
-  }
-
-  deleteCurrentPage() {
-    if (!this.currentPageId) {
-      this.showNotification('⚠️ 请先选择一个分区', true);
-      return;
-    }
-    this.deletePage(this.currentPageId);
-  }
-
-  // ========== 分页标签渲染（保留兼容旧代码） ==========
-
-  renderPageTabs() {
-    this.renderPageList();
-  }
-
-  updateConnectionStatus(connected) {
-    // 连接状态已移除UI，仅控制台记录
-    console.log(connected ? '已连接到云端' : '离线模式（本地存储)');
-  }
-
-  async loadData() {
-    const items = await this.storage.getAllItems(this.currentPageId);
-    this.reviewItems = items.map(item => this.storage.fromDbFormat(item));
-  }
-
-  loadLocalBackup() {
-    try {
-      const backup = localStorage.getItem('reviewItems_backup');
-      if (backup) {
-        const data = JSON.parse(backup);
-        this.reviewItems = data.map(item => ({
-          ...item,
-          createdAt: new Date(item.createdAt),
-          nextReview: new Date(item.nextReview),
-          completedReviews: (item.completedReviews || []).map(d => new Date(d))
-        }));
-      }
-    } catch (e) {
-      this.reviewItems = [];
-    }
-  }
-
-  loadLocalPagesBackup() {
-    try {
-      const backup = localStorage.getItem('pages_backup');
-      if (backup) {
-        const data = JSON.parse(backup);
-        this.pages = data.map(page => ({
-          ...page,
-          createdAt: new Date(page.createdAt)
-        }));
+        // 点击其他地方关闭
+        const hide = () => {
+          menu.style.display = 'none';
+          document.removeEventListener('click', hide);
+        };
+        setTimeout(() => document.addEventListener('click', hide), 10);
       }
 
-      // 如果没有分页��创建默认分页
-      if (this.pages.length === 0) {
-        this.pages = [{
-          id: Date.now(),
-          name: '默认分页',
-          createdAt: new Date(),
-          sortOrder: 0
-        }];
+      hideContextMenu() {
+        document.getElementById('contextMenu').style.display = 'none';
       }
 
-      // 设置当前分页
-      if (!this.currentPageId && this.pages.length > 0) {
-        this.currentPageId = this.pages[0].id;
-      }
-    } catch (e) {
-      this.pages = [{
-        id: Date.now(),
-        name: '默认分页',
-        createdAt: new Date(),
-        sortOrder: 0
-      }];
-      this.currentPageId = this.pages[0].id;
-    }
-  }
+      // ========== 齿轮菜单方法 ==========
 
-  backupToLocalStorage() {
-    try {
-      localStorage.setItem('reviewItems_backup', JSON.stringify(this.reviewItems));
-      localStorage.setItem('pages_backup', JSON.stringify(this.pages));
-    } catch (e) {
-      console.error('备份失败:', e);
-    }
-  }
+      toggleGearMenu(e) {
+        e.stopPropagation();
+        const menu = document.getElementById('gearMenu');
+        menu.classList.toggle('show');
 
-  showNotification(msg, isError = false) {
-    const n = document.createElement('div');
-    n.style.cssText = `position:fixed;top:20px;right:20px;background:${isError ? '#ff6b6b' : '#51cf66'};color:#fff;padding:12px 20px;border-radius:8px;font-weight:600;z-index:1000;animation:slideIn 0.3s ease`;
-    n.textContent = msg;
-    document.body.appendChild(n);
-    setTimeout(() => {
-      n.style.opacity = '0';
-      n.style.transform = 'translateX(100%)';
-      n.style.transition = 'all 0.3s';
-      setTimeout(() => n.remove(), 300);
-    }, 3000);
-  }
-
-  initEventListeners() {
-    document.getElementById('addForm').addEventListener('submit', async e => {
-      e.preventDefault();
-      await this.addItem();
-    });
-    document.getElementById('importFile').addEventListener('change', e => this.handleFileImport(e));
-
-    // 确认弹窗按钮事件
-    document.getElementById('modalCancelBtn').addEventListener('click', () => this.onModalCancel());
-    document.getElementById('modalConfirmBtn').addEventListener('click', () => this.onModalConfirm());
-
-    // 点击弹窗背景关闭
-    document.getElementById('confirmModal').addEventListener('click', (e) => {
-      if (e.target.id === 'confirmModal') {
-        this.onModalCancel();
-      }
-    });
-
-    // ESC 键关闭弹窗和右键菜单
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        if (document.getElementById('confirmModal').classList.contains('show')) {
-          this.onModalCancel();
-        }
-        this.hideContextMenu();
-      }
-    });
-  }
-
-  async addItem() {
-    const title = document.getElementById('title').value.trim();
-    const content = this.editFormatToCloze(document.getElementById('content').innerHTML.trim());
-    if (!title || !content || content === '<br>') return alert('请填写完整！');
-
-    const item = {
-      // id 由数据库自动生成
-      title,
-      content,
-      createdAt: new Date(),
-      currentInterval: 0,
-      reviewCount: 0,
-      nextReview: new Date(Date.now() + this.reviewIntervals[0] * 24 * 60 * 60 * 1000),
-      completedReviews: [],
-      easeFactor: 2.5,
-      lastIntervalDays: 0,
-      pageId: this.currentPageId  // 关联当前分页
-    };
-
-    try {
-      const savedItem = await this.storage.addItem(item);
-      // 使用数据库返回的完整数据
-      const fullItem = this.storage.fromDbFormat(savedItem);
-      this.reviewItems.push(fullItem);
-      this.backupToLocalStorage();
-      this.render();
-      this.updateStats();
-      this.updateBellReminder();
-      document.getElementById('title').value = '';
-      document.getElementById('content').innerHTML = '';
-      this.showNotification('✅ 已添加并同步到云端');
-    } catch (e) {
-      console.error('添加失败:', e);
-      this.showNotification('❌ 添加失败，请检查网络', true);
-    }
-  }
-
-  async exportData() {
-    const dataStr = JSON.stringify({
-      exportDate: new Date().toISOString(),
-      version: '7.0-supabase',
-      items: this.reviewItems
-    }, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `艾宾浩斯复习数据_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    this.showNotification('📤 导出成功');
-  }
-
-  async importData() {
-    document.getElementById('importFile').click();
-  }
-
-  // ========== V13 系统级总备份功能 ==========
-
-  async exportFullBackup() {
-    try {
-      this.showNotification('正在汇总数据...');
-
-      // 1. 获取所有分页
-      const pages = this.pages;
-
-      // 2. 获取所有分页的复习项目
-      const allItems = await this.storage.getAllItems(null); // null = 获取全部
-
-      // 3. 构建备份数据
-      const backupData = {
-        exportDate: new Date().toISOString(),
-        version: '13.0-full-backup',
-        pages: pages.map(p => ({
-          id: p.id,
-          name: p.name,
-          sortOrder: p.sortOrder
-        })),
-        items: allItems.map(item => {
-          const formatted = this.storage.fromDbFormat(item);
-          return {
-            title: formatted.title,
-            content: formatted.content,
-            createdAt: formatted.createdAt.toISOString(),
-            currentInterval: formatted.currentInterval,
-            reviewCount: formatted.reviewCount,
-            nextReview: formatted.nextReview.toISOString(),
-            completedReviews: formatted.completedReviews.map(d => d.toISOString()),
-            easeFactor: formatted.easeFactor,
-            lastIntervalDays: formatted.lastIntervalDays,
-            pageId: formatted.pageId
+        // 点击其他地方关闭菜单
+        if (menu.classList.contains('show')) {
+          const closeMenu = (evt) => {
+            if (!menu.contains(evt.target)) {
+              menu.classList.remove('show');
+              document.removeEventListener('click', closeMenu);
+            }
           };
-        })
-      };
-
-      // 4. 触发下载
-      const dataStr = JSON.stringify(backupData, null, 2);
-      const blob = new Blob([dataStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `复习系统总备份_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-
-      this.showNotification(`📤 导出成功：${pages.length} 个分页，${allItems.length} 条数据`);
-    } catch (e) {
-      console.error('导出失败:', e);
-      this.showNotification('❌ 导出失败：' + e.message, true);
-    }
-  }
-
-  async importFullBackup() {
-    // 触发文件选择
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      try {
-        const text = await file.text();
-        const data = JSON.parse(text);
-
-        // 验证格式
-        if (!data.version || !data.pages || !data.items) {
-          throw new Error('不是有效的总备份文件');
+          setTimeout(() => document.addEventListener('click', closeMenu), 10);
         }
-
-        if (data.version !== '13.0-full-backup') {
-          throw new Error('备份文件版本不匹配，请使用 V13 格式的备份');
-        }
-
-        const confirmMsg = `即将导入 ${data.pages.length} 个分页和 ${data.items.length} 条数据。\n现有数据将被覆盖，确定继续？`;
-        if (!confirm(confirmMsg)) return;
-
-        this.showNotification('正在导入数据...');
-
-        // 1. 清空现有数据
-        await this.storage.clearAllItems();
-        if (this.storage.clearAllPages) {
-          await this.storage.clearAllPages();
-        }
-
-        // 2. 创建 ID 映射表（旧 ID → 新 ID）
-        const pageIdMap = {};
-
-        // 3. 按顺序创建分页，记录新 ID
-        for (const page of data.pages) {
-          const newPageData = await this.storage.addPage(page.name, page.sortOrder);
-          const newPage = this.storage.fromDbPageFormat(newPageData);
-          pageIdMap[page.id] = newPage.id;
-        }
-
-        // 4. 导入所有项目，更新 pageId
-        for (const item of data.items) {
-          const newItem = {
-            title: item.title,
-            content: item.content,
-            createdAt: new Date(item.createdAt),
-            currentInterval: item.currentInterval,
-            reviewCount: item.reviewCount,
-            nextReview: new Date(item.nextReview),
-            completedReviews: (item.completedReviews || []).map(d => new Date(d)),
-            easeFactor: item.easeFactor,
-            lastIntervalDays: item.lastIntervalDays,
-            pageId: pageIdMap[item.pageId] || null  // 映射到新分页 ID
-          };
-          await this.storage.addItem(newItem);
-        }
-
-        // 5. 重新加载分页列表
-        await this.loadPages();
-
-        // 6. 切换到第一个分页
-        if (this.pages.length > 0) {
-          await this.switchPage(this.pages[0].id);
-        }
-
-        this.backupToLocalStorage();
-        this.showNotification(`📥 导入成功：${data.pages.length} 个分页，${data.items.length} 条数据已同步`);
-      } catch (e) {
-        console.error('导入失败:', e);
-        this.showNotification('❌ 导入失败：' + e.message, true);
-      }
-    };
-    input.click();
-  }
-
-  async processImportFile(file) {
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      if (!data.items || !Array.isArray(data.items)) throw new Error('格式错误');
-
-      const items = data.items.map(i => ({
-        ...i,
-        createdAt: new Date(i.createdAt),
-        nextReview: new Date(i.nextReview),
-        completedReviews: (i.completedReviews || []).map(d => new Date(d))
-      }));
-
-      if (!confirm(`导入 ${items.length} 条数据。是否清空现有数据并导入？`)) return;
-
-      await this.storage.clearAllItems();
-      for (const item of items) {
-        await this.storage.addItem(item);
       }
 
-      this.reviewItems = items;
-      this.backupToLocalStorage();
-      this.editingId = null;
-      this.render();
-      this.updateStats();
-      this.updateBellReminder();
-      this.showNotification(`📥 导入成功：${file.name}`);
-    } catch (err) {
-      alert('导入失败：' + err.message);
-    }
-  }
+      // ========== 同步功能方法 ==========
 
-  async handleFileImport(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    await this.processImportFile(file);
-    e.target.value = '';
-  }
+      // 手动同步刷新
+      async syncRefresh() {
+        try {
+          this.showNotification('正在同步...');
+          await this.loadPages();
+          await this.loadData();
+          this.renderPageList();
+          this.render();
+          this.updateStats();
+          this.updateBellReminder();
+          this.showNotification('✅ 同步成功');
+        } catch (e) {
+          console.error('同步失败:', e);
+          this.showNotification('❌ 同步失败', true);
+        }
+      }
 
-  startEdit(id) {
-    if (this.editingId && this.editingId !== id) this.saveEdit(this.editingId);
-    this.editingId = id;
-    const item = this.reviewItems.find(i => i.id === id);
-    if (!item) return;
-    const card = document.getElementById(`item-${id}`);
-    if (!card) return;
-    card.classList.add('editing');
-    const viewMode = card.querySelector('.view-mode');
-    const editMode = card.querySelector('.edit-mode');
-    if (viewMode && editMode) {
-      viewMode.style.display = 'none';
-      editMode.style.display = 'block';
-      const titleInput = card.querySelector('.edit-title');
-      const editContent = card.querySelector('.edit-rich-content');
-      if (titleInput) titleInput.value = item.title;
-      if (editContent) editContent.innerHTML = this.clozeToEditFormat(item.content);
-    }
-  }
+      // 设置实时同步
+      setupRealtimeSync() {
+        console.log('正在设置 Realtime 订阅...');
 
-  async saveEdit(id) {
-    const card = document.getElementById(`item-${id}`);
-    if (!card) return;
-    const titleInput = card.querySelector('.edit-title');
-    const contentEditor = card.querySelector('.edit-rich-content');
-    const newTitle = titleInput.value.trim();
-    const newContent = this.editFormatToCloze(contentEditor.innerHTML.trim());
+        // 订阅 review_items 表变更
+        this.storage.supabase
+          .channel('review-items-changes')
+          .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'review_items' },
+            (payload) => {
+              console.log('🔔 Realtime 事件 - review_items:', payload.eventType, payload);
+              this.handleItemChange(payload);
+            }
+          )
+          .subscribe((status) => {
+            console.log('📡 review_items 订阅状态:', status);
+            if (status === 'SUBSCRIBED') {
+              console.log('✅ Realtime 订阅成功：review_items');
+            } else if (status === 'CHANNEL_ERROR') {
+              console.error('❌ Realtime 订阅失败：review_items - 可能需要在 Supabase 启用 Realtime');
+            }
+          });
 
-    if (!newTitle || !newContent || newContent === '<br>') {
-      alert('标题和内容不能为空！');
-      return;
-    }
+        // 订阅 pages 表变更
+        this.storage.supabase
+          .channel('pages-changes')
+          .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'pages' },
+            (payload) => {
+              console.log('🔔 Realtime 事件 - pages:', payload.eventType, payload);
+              this.handlePageChange(payload);
+            }
+          )
+          .subscribe((status) => {
+            console.log('📡 pages 订阅状态:', status);
+            if (status === 'SUBSCRIBED') {
+              console.log('✅ Realtime 订阅成功：pages');
+            } else if (status === 'CHANNEL_ERROR') {
+              console.error('❌ Realtime 订阅失败：pages - 可能需要在 Supabase 启用 Realtime');
+            }
+          });
+      }
 
-    const item = this.reviewItems.find(i => i.id === id);
-    if (item) {
-      item.title = newTitle;
-      item.content = newContent;
-
-      try {
-        await this.storage.updateItem(id, item);
-        this.backupToLocalStorage();
-        this.editingId = null;
+      // 处理 review_items 变更
+      async handleItemChange(payload) {
+        console.log('收到项目变更:', payload.eventType);
+        // 重新加载当前分页数据并刷新界面
+        await this.loadData();
         this.render();
         this.updateStats();
-        this.showNotification('✏️ 已保存并同步');
-      } catch (e) {
-        console.error('保存失败:', e);
-        this.showNotification('❌ 保存失败，请检查网络', true);
+        this.updateBellReminder();
       }
-    }
-  }
 
-  cancelEdit(id) {
-    this.editingId = null;
-    this.render();
-  }
+      // 处理 pages 变更
+      async handlePageChange(payload) {
+        console.log('收到分页变更:', payload.eventType);
+        await this.loadPages();
+        this.renderPageList();
+      }
 
-  formatEditDoc(id, cmd, value = null) {
-    const card = document.getElementById(`item-${id}`);
-    if (!card) return;
-    const editor = card.querySelector('.edit-rich-content');
-    if (editor) {
-      editor.focus();
-      document.execCommand(cmd, false, value);
-    }
-  }
-
-  async rateReview(id, rating) {
-    if (this.editingId === id) await this.saveEdit(id);
-    const item = this.reviewItems.find(i => i.id === id);
-    if (!item) return;
-
-    item.reviewCount++;
-    item.completedReviews.push(new Date());
-
-    if (item.easeFactor === undefined) item.easeFactor = 2.5;
-    if (item.lastIntervalDays === undefined) item.lastIntervalDays = 0;
-
-    let nextDays = 1;
-    let notificationMsg = '';
-    const maxStage = this.reviewIntervals.length - 1;
-    const isInDynamicPhase = item.currentInterval >= maxStage;
-
-    switch (rating) {
-      case 'forget':
-        item.currentInterval = 0;
-        item.easeFactor = Math.max(1.3, item.easeFactor - 0.2);
-        nextDays = this.reviewIntervals[0];
-        item.lastIntervalDays = nextDays;
-        notificationMsg = '😰 已重置，明天再复习';
-        break;
-
-      case 'hard':
-        if (isInDynamicPhase) {
-          item.easeFactor = Math.max(1.3, item.easeFactor - 0.15);
-          const baseInterval = item.lastIntervalDays || 60;
-          nextDays = Math.max(1, Math.round(baseInterval * 1.2));
-          item.lastIntervalDays = nextDays;
-        } else {
-          const nextStageDays = this.reviewIntervals[item.currentInterval + 1];
-          nextDays = Math.max(1, Math.floor(nextStageDays / 2));
-          item.currentInterval++;
-          item.lastIntervalDays = nextDays;
+      deleteCurrentPage() {
+        if (!this.currentPageId) {
+          this.showNotification('⚠️ 请先选择一个分区', true);
+          return;
         }
-        notificationMsg = '😓 加油，保持复习';
-        break;
+        this.deletePage(this.currentPageId);
+      }
 
-      case 'good':
-        if (isInDynamicPhase) {
-          const baseInterval = item.lastIntervalDays || 60;
-          nextDays = Math.round(baseInterval * item.easeFactor);
-          item.lastIntervalDays = nextDays;
-        } else {
-          item.currentInterval++;
-          nextDays = this.reviewIntervals[item.currentInterval];
-          item.lastIntervalDays = nextDays;
-        }
-        notificationMsg = '😊 复习完成！';
-        break;
+      // ========== 分页标签渲染（保留兼容旧代码） ==========
 
-      case 'easy':
-        item.easeFactor = Math.min(3.0, item.easeFactor + 0.1);
-        if (isInDynamicPhase) {
-          const baseInterval = item.lastIntervalDays || 60;
-          nextDays = Math.round(baseInterval * item.easeFactor * 1.3);
-          item.lastIntervalDays = nextDays;
-        } else {
-          if (item.currentInterval < maxStage - 1) {
-            item.currentInterval += 2;
-          } else {
-            item.currentInterval = maxStage;
+      renderPageTabs() {
+        this.renderPageList();
+      }
+
+      updateConnectionStatus(connected) {
+        // 连接状态已移除UI，仅控制台记录
+        console.log(connected ? '已连接到云端' : '离线模式（本地存储)');
+      }
+
+      async loadData() {
+        // 获取全部项目以计算所有分区的复习提醒
+        const items = await this.storage.getAllItems();
+        this.allReviewItems = items.map(item => this.storage.fromDbFormat(item));
+        // 过滤当前页面的项目用于展示
+        this.reviewItems = this.allReviewItems.filter(i => i.pageId === this.currentPageId);
+      }
+
+      loadLocalBackup() {
+        try {
+          const backup = localStorage.getItem('reviewItems_backup');
+          if (backup) {
+            const data = JSON.parse(backup);
+            this.reviewItems = data.map(item => ({
+              ...item,
+              createdAt: new Date(item.createdAt),
+              nextReview: new Date(item.nextReview),
+              completedReviews: (item.completedReviews || []).map(d => new Date(d))
+            }));
           }
-          nextDays = this.reviewIntervals[item.currentInterval];
-          item.lastIntervalDays = nextDays;
+        } catch (e) {
+          this.reviewItems = [];
         }
-        notificationMsg = '😎 太棒了！';
-        break;
-    }
-
-    item.nextReview = new Date(Date.now() + nextDays * 24 * 60 * 60 * 1000);
-
-    try {
-      await this.storage.updateItem(id, item);
-      this.backupToLocalStorage();
-      this.render();
-      this.updateStats();
-      this.updateBellReminder();
-      this.showNotification(`${notificationMsg} (${nextDays}天后)`);
-    } catch (e) {
-      console.error('更新失败:', e);
-      this.showNotification('❌ 同步失败，请检查网络', true);
-    }
-  }
-
-  async deleteItem(id) {
-    if (!confirm('确定删除？')) return;
-
-    try {
-      await this.storage.deleteItem(id);
-      this.reviewItems = this.reviewItems.filter(i => i.id !== id);
-      this.backupToLocalStorage();
-      this.editingId = null;
-      this.render();
-      this.updateStats();
-      this.updateBellReminder();
-      this.showNotification('🗑️ 已删除');
-    } catch (e) {
-      console.error('删除失败:', e);
-      this.showNotification('❌ 删除失败，请检查网络', true);
-    }
-  }
-
-  async clearAllData() {
-    if (!confirm('⚠️ 清空后不可恢复，确定吗？')) return;
-    if (!confirm('再次确认：真的要清空？')) return;
-
-    try {
-      await this.storage.clearAllItems();
-      this.reviewItems = [];
-      this.editingId = null;
-      localStorage.removeItem('reviewItems_backup');
-      this.render();
-      this.updateStats();
-      this.updateBellReminder();
-      this.showNotification('🗑️ 已清空');
-    } catch (e) {
-      console.error('清空失败:', e);
-      this.showNotification('❌ 清空失败，请检查网络', true);
-    }
-  }
-
-  updateBellReminder() {
-    const c = this.categorizeItems();
-    const count = c.urgent.length + c.today.length;
-    const bellCount = document.getElementById('bellCount');
-    const bellText = document.querySelector('.bell-text');
-
-    if (bellCount) {
-      bellCount.textContent = count;
-      bellCount.className = 'bell-count';
-      if (count === 0) {
-        bellCount.classList.add('zero');
-        if (bellText) bellText.textContent = '已完成';
-      } else if (c.urgent.length > 0) {
-        bellCount.classList.add('urgent');
-        if (bellText) bellText.textContent = '紧急复习';
-      } else {
-        if (bellText) bellText.textContent = '待复习';
       }
-    }
 
-    const todaySectionTitle = document.getElementById('todaySectionTitle');
-    if (todaySectionTitle) {
-      if (c.today.length > 0 || c.urgent.length > 0) {
-        todaySectionTitle.style.color = '#ff6b6b';
-        todaySectionTitle.innerHTML = '📅 今日复习 <span style="font-size:0.6em;background:#ffd700;color:#333;padding:2px 8px;border-radius:10px;">' + count + '个待办</span>';
-      } else {
-        todaySectionTitle.style.color = '';
-        todaySectionTitle.innerHTML = '📅 今日复习';
+      loadLocalPagesBackup() {
+        try {
+          const backup = localStorage.getItem('pages_backup');
+          if (backup) {
+            const data = JSON.parse(backup);
+            this.pages = data.map(page => ({
+              ...page,
+              createdAt: new Date(page.createdAt)
+            }));
+          }
+
+          // 如果没有分页创建默认分页
+          if (this.pages.length === 0) {
+            this.pages = [{
+              id: Date.now(),
+              name: '默认分页',
+              createdAt: new Date(),
+              sortOrder: 0
+            }];
+          }
+
+          // 设置当前分页
+          if (!this.currentPageId && this.pages.length > 0) {
+            this.currentPageId = this.pages[0].id;
+          }
+        } catch (e) {
+          this.pages = [{
+            id: Date.now(),
+            name: '默认分页',
+            createdAt: new Date(),
+            sortOrder: 0
+          }];
+          this.currentPageId = this.pages[0].id;
+        }
       }
-    }
-  }
 
-  categorizeItems() {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const three = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
-    return {
-      urgent: this.reviewItems.filter(i => i.nextReview < today),
-      today: this.reviewItems.filter(i => {
-        const d = new Date(i.nextReview);
-        return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() === today.getTime();
-      }),
-      upcoming: this.reviewItems.filter(i => i.nextReview > today && i.nextReview <= three),
-      future: this.reviewItems.filter(i => i.nextReview > three)
-    };
-  }
+      backupToLocalStorage() {
+        try {
+          localStorage.setItem('reviewItems_backup', JSON.stringify(this.reviewItems));
+          localStorage.setItem('pages_backup', JSON.stringify(this.pages));
+        } catch (e) {
+          console.error('备份失败:', e);
+        }
+      }
 
-  render() {
-    const c = this.categorizeItems();
-    this.renderCat('urgentItems', c.urgent, 'urgent');
-    this.renderCat('todayItems', c.today, 'due-soon');
-    this.renderCat('upcomingItems', c.upcoming, 'upcoming');
-    this.renderCat('futureItems', c.future, 'future');
-  }
+      showNotification(msg, isError = false) {
+        const n = document.createElement('div');
+        n.style.cssText = `position:fixed;top:20px;right:20px;background:${isError ? '#ff6b6b' : '#51cf66'};color:#fff;padding:12px 20px;border-radius:8px;font-weight:600;z-index:1000;animation:slideIn 0.3s ease`;
+        n.textContent = msg;
+        document.body.appendChild(n);
+        setTimeout(() => {
+          n.style.opacity = '0';
+          n.style.transform = 'translateX(100%)';
+          n.style.transition = 'all 0.3s';
+          setTimeout(() => n.remove(), 300);
+        }, 3000);
+      }
 
-  changeSlide(sectionId, delta) {
-    if (this.slideState[sectionId] === undefined) this.slideState[sectionId] = 0;
-    this.slideState[sectionId] += delta;
-    const c = this.categorizeItems();
-    switch (sectionId) {
-      case 'urgentItems': this.renderCat('urgentItems', c.urgent, 'urgent'); break;
-      case 'todayItems': this.renderCat('todayItems', c.today, 'due-soon'); break;
-      case 'upcomingItems': this.renderCat('upcomingItems', c.upcoming, 'upcoming'); break;
-      case 'futureItems': this.renderCat('futureItems', c.future, 'future'); break;
-    }
-  }
+      initEventListeners() {
+        document.getElementById('addForm').addEventListener('submit', async e => {
+          e.preventDefault();
+          await this.addItem();
+        });
+        document.getElementById('importFile').addEventListener('change', e => this.handleFileImport(e));
 
-  renderCat(elementId, items, cls) {
-    const box = document.getElementById(elementId);
-    if (!items.length) {
-      box.innerHTML = `<div class="empty-state"><span style="font-size:2em">🎉</span><p>暂无内容</p></div>`;
-      this.slideState[elementId] = 0;
-      return;
-    }
+        // 搜索框事件
+        const searchInput = document.getElementById('searchInput');
+        const searchClear = document.getElementById('searchClear');
 
-    let currentIndex = this.slideState[elementId] || 0;
-    if (currentIndex >= items.length) currentIndex = items.length - 1;
-    if (currentIndex < 0) currentIndex = 0;
-    this.slideState[elementId] = currentIndex;
+        searchInput.addEventListener('input', (e) => {
+          clearTimeout(this.searchDebounceTimer);
+          this.searchDebounceTimer = setTimeout(() => {
+            this.currentSearchQuery = e.target.value.trim();
+            searchClear.style.display = this.currentSearchQuery ? 'flex' : 'none';
+            this.render();
+          }, 300);
+        });
 
-    const currentItem = items[currentIndex];
-    const isFirst = currentIndex === 0;
-    const isLast = currentIndex === items.length - 1;
+        searchClear.addEventListener('click', () => {
+          searchInput.value = '';
+          this.currentSearchQuery = '';
+          searchClear.style.display = 'none';
+          searchInput.focus();
+          this.render();
+        });
 
-    const controlsHTML = `
+        // 确认弹窗按钮事件
+        document.getElementById('modalCancelBtn').addEventListener('click', () => this.onModalCancel());
+        document.getElementById('modalConfirmBtn').addEventListener('click', () => this.onModalConfirm());
+
+        // 点击弹窗背景关闭
+        document.getElementById('confirmModal').addEventListener('click', (e) => {
+          if (e.target.id === 'confirmModal') {
+            this.onModalCancel();
+          }
+        });
+
+        // ESC 键关闭弹窗和右键菜单
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            if (document.getElementById('confirmModal').classList.contains('show')) {
+              this.onModalCancel();
+            }
+            this.hideContextMenu();
+          }
+        });
+      }
+
+      async addItem() {
+        const title = document.getElementById('title').value.trim();
+        const content = this.editFormatToCloze(document.getElementById('content').innerHTML.trim());
+        if (!title || !content || content === '<br>') return alert('请填写完整！');
+
+        const item = {
+          // id 由数据库自动生成
+          title,
+          content,
+          createdAt: new Date(),
+          currentInterval: 0,
+          reviewCount: 0,
+          nextReview: new Date(Date.now() + this.reviewIntervals[0] * 24 * 60 * 60 * 1000),
+          completedReviews: [],
+          easeFactor: 2.5,
+          lastIntervalDays: 0,
+          pageId: this.currentPageId  // 关联当前分页
+        };
+
+        try {
+          const savedItem = await this.storage.addItem(item);
+          // 使用数据库返回的完整数据
+          const fullItem = this.storage.fromDbFormat(savedItem);
+          this.reviewItems.push(fullItem);
+          this.backupToLocalStorage();
+          this.render();
+          this.updateStats();
+          this.updateBellReminder();
+          document.getElementById('title').value = '';
+          document.getElementById('content').innerHTML = '';
+          this.showNotification('✅ 已添加并同步到云端');
+        } catch (e) {
+          console.error('添加失败:', e);
+          this.showNotification('❌ 添加失败，请检查网络', true);
+        }
+      }
+
+      async exportData() {
+        const dataStr = JSON.stringify({
+          exportDate: new Date().toISOString(),
+          version: '7.0-supabase',
+          items: this.reviewItems
+        }, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `艾宾浩斯复习数据_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.showNotification('📤 导出成功');
+      }
+
+      async importData() {
+        document.getElementById('importFile').click();
+      }
+
+      // ========== V13 系统级总备份功能 ==========
+
+      async exportFullBackup() {
+        try {
+          this.showNotification('正在汇总数据...');
+
+          // 1. 获取所有分页
+          const pages = this.pages;
+
+          // 2. 获取所有分页的复习项目
+          const allItems = await this.storage.getAllItems(null); // null = 获取全部
+
+          // 3. 构建备份数据
+          const backupData = {
+            exportDate: new Date().toISOString(),
+            version: '13.0-full-backup',
+            pages: pages.map(p => ({
+              id: p.id,
+              name: p.name,
+              sortOrder: p.sortOrder
+            })),
+            items: allItems.map(item => {
+              const formatted = this.storage.fromDbFormat(item);
+              return {
+                title: formatted.title,
+                content: formatted.content,
+                createdAt: formatted.createdAt.toISOString(),
+                currentInterval: formatted.currentInterval,
+                reviewCount: formatted.reviewCount,
+                nextReview: formatted.nextReview.toISOString(),
+                completedReviews: formatted.completedReviews.map(d => d.toISOString()),
+                easeFactor: formatted.easeFactor,
+                lastIntervalDays: formatted.lastIntervalDays,
+                pageId: formatted.pageId
+              };
+            })
+          };
+
+          // 4. 触发下载
+          const dataStr = JSON.stringify(backupData, null, 2);
+          const blob = new Blob([dataStr], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `复习系统总备份_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.json`;
+          a.click();
+          URL.revokeObjectURL(url);
+
+          this.showNotification(`📤 导出成功：${pages.length} 个分页，${allItems.length} 条数据`);
+        } catch (e) {
+          console.error('导出失败:', e);
+          this.showNotification('❌ 导出失败：' + e.message, true);
+        }
+      }
+
+      async importFullBackup() {
+        // 触发文件选择
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+
+            // 验证格式
+            if (!data.version || !data.pages || !data.items) {
+              throw new Error('不是有效的总备份文件');
+            }
+
+            if (data.version !== '13.0-full-backup') {
+              throw new Error('备份文件版本不匹配，请使用 V13 格式的备份');
+            }
+
+            const confirmMsg = `即将导入 ${data.pages.length} 个分页和 ${data.items.length} 条数据。\n现有数据将被覆盖，确定继续？`;
+            if (!confirm(confirmMsg)) return;
+
+            this.showNotification('正在导入数据...');
+
+            // 1. 清空现有数据
+            await this.storage.clearAllItems();
+            if (this.storage.clearAllPages) {
+              await this.storage.clearAllPages();
+            }
+
+            // 2. 创建 ID 映射表（旧 ID → 新 ID）
+            const pageIdMap = {};
+
+            // 3. 按顺序创建分页，记录新 ID
+            for (const page of data.pages) {
+              const newPageData = await this.storage.addPage(page.name, page.sortOrder);
+              const newPage = this.storage.fromDbPageFormat(newPageData);
+              pageIdMap[page.id] = newPage.id;
+            }
+
+            // 4. 导入所有项目，更新 pageId
+            for (const item of data.items) {
+              const newItem = {
+                title: item.title,
+                content: item.content,
+                createdAt: new Date(item.createdAt),
+                currentInterval: item.currentInterval,
+                reviewCount: item.reviewCount,
+                nextReview: new Date(item.nextReview),
+                completedReviews: (item.completedReviews || []).map(d => new Date(d)),
+                easeFactor: item.easeFactor,
+                lastIntervalDays: item.lastIntervalDays,
+                pageId: pageIdMap[item.pageId] || null  // 映射到新分页 ID
+              };
+              await this.storage.addItem(newItem);
+            }
+
+            // 5. 重新加载分页列表
+            await this.loadPages();
+
+            // 6. 切换到第一个分页
+            if (this.pages.length > 0) {
+              await this.switchPage(this.pages[0].id);
+            }
+
+            this.backupToLocalStorage();
+            this.showNotification(`📥 导入成功：${data.pages.length} 个分页，${data.items.length} 条数据已同步`);
+          } catch (e) {
+            console.error('导入失败:', e);
+            this.showNotification('❌ 导入失败：' + e.message, true);
+          }
+        };
+        input.click();
+      }
+
+      async processImportFile(file) {
+        try {
+          const text = await file.text();
+          const data = JSON.parse(text);
+          if (!data.items || !Array.isArray(data.items)) throw new Error('格式错误');
+
+          const items = data.items.map(i => ({
+            ...i,
+            createdAt: new Date(i.createdAt),
+            nextReview: new Date(i.nextReview),
+            completedReviews: (i.completedReviews || []).map(d => new Date(d))
+          }));
+
+          if (!confirm(`导入 ${items.length} 条数据。是否清空现有数据并导入？`)) return;
+
+          await this.storage.clearAllItems();
+          for (const item of items) {
+            await this.storage.addItem(item);
+          }
+
+          this.reviewItems = items;
+          this.backupToLocalStorage();
+          this.editingId = null;
+          this.render();
+          this.updateStats();
+          this.updateBellReminder();
+          this.showNotification(`📥 导入成功：${file.name}`);
+        } catch (err) {
+          alert('导入失败：' + err.message);
+        }
+      }
+
+      async handleFileImport(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        await this.processImportFile(file);
+        e.target.value = '';
+      }
+
+      startEdit(id) {
+        if (this.editingId && this.editingId !== id) this.saveEdit(this.editingId);
+        this.editingId = id;
+        const item = this.reviewItems.find(i => i.id === id);
+        if (!item) return;
+        const card = document.getElementById(`item-${id}`);
+        if (!card) return;
+        card.classList.add('editing');
+        const viewMode = card.querySelector('.view-mode');
+        const editMode = card.querySelector('.edit-mode');
+        if (viewMode && editMode) {
+          viewMode.style.display = 'none';
+          editMode.style.display = 'block';
+          const titleInput = card.querySelector('.edit-title');
+          const editContent = card.querySelector('.edit-rich-content');
+          if (titleInput) titleInput.value = item.title;
+          if (editContent) editContent.innerHTML = this.clozeToEditFormat(item.content);
+        }
+      }
+
+      async saveEdit(id) {
+        const card = document.getElementById(`item-${id}`);
+        if (!card) return;
+        const titleInput = card.querySelector('.edit-title');
+        const contentEditor = card.querySelector('.edit-rich-content');
+        const newTitle = titleInput.value.trim();
+        const newContent = this.editFormatToCloze(contentEditor.innerHTML.trim());
+
+        if (!newTitle || !newContent || newContent === '<br>') {
+          alert('标题和内容不能为空！');
+          return;
+        }
+
+        const item = this.reviewItems.find(i => i.id === id);
+        if (item) {
+          item.title = newTitle;
+          item.content = newContent;
+
+          try {
+            await this.storage.updateItem(id, item);
+            this.backupToLocalStorage();
+            this.editingId = null;
+            this.render();
+            this.updateStats();
+            this.showNotification('✏️ 已保存并同步');
+          } catch (e) {
+            console.error('保存失败:', e);
+            this.showNotification('❌ 保存失败，请检查网络', true);
+          }
+        }
+      }
+
+      cancelEdit(id) {
+        this.editingId = null;
+        this.render();
+      }
+
+      formatEditDoc(id, cmd, value = null) {
+        const card = document.getElementById(`item-${id}`);
+        if (!card) return;
+        const editor = card.querySelector('.edit-rich-content');
+        if (editor) {
+          editor.focus();
+          document.execCommand(cmd, false, value);
+        }
+      }
+
+      // 切换编辑模式下拉菜单
+      toggleEditDropdown(id, menuId) {
+        const menu = document.getElementById(menuId);
+        if (!menu) return;
+
+        const isOpen = menu.classList.contains('show');
+
+        // 关闭所有编辑模式下拉菜单
+        document.querySelectorAll('[id^="font-size-menu-"], [id^="highlight-menu-"]').forEach(m => m.classList.remove('show'));
+
+        // 如果之前未打开，则打开当前菜单
+        if (!isOpen) {
+          menu.classList.add('show');
+        }
+      }
+
+      // 设置编辑模式字体大小
+      setEditFontSize(id, fontSize) {
+        const card = document.getElementById(`item-${id}`);
+        if (!card) return;
+
+        const editor = card.querySelector('.edit-rich-content');
+        if (editor) {
+          editor.focus();
+          document.execCommand('styleWithCSS', false, true);
+          // 使用 fontSize 指令先标记选中区域，然后替换为 span 以支持精确 px
+          document.execCommand('fontSize', false, '7');
+          const fontElements = editor.getElementsByTagName('font');
+          for (let i = 0; i < fontElements.length; i++) {
+            if (fontElements[i].size === '7') {
+              fontElements[i].removeAttribute('size');
+              fontElements[i].style.fontSize = fontSize;
+            }
+          }
+          // 同样处理 span
+          const spans = editor.getElementsByTagName('span');
+          for (let i = 0; i < spans.length; i++) {
+            const size = spans[i].style.fontSize;
+            if (size === 'xxx-large' || size === '48px' || size === '-webkit-xxx-large') {
+              spans[i].style.fontSize = fontSize;
+            }
+          }
+        }
+
+        // 更新按钮显示的字号
+        const currentFontSize = document.getElementById(`current-font-${id}`);
+        if (currentFontSize) currentFontSize.textContent = fontSize;
+
+        // 更新下拉项激活状态
+        const menu = document.getElementById(`font-size-menu-${id}`);
+        if (menu) {
+          menu.querySelectorAll('.dropdown-item').forEach(item => {
+            item.classList.toggle('active', item.textContent.includes(fontSize));
+          });
+        }
+
+        // 关闭菜单
+        this.hideAllDropdowns();
+      }
+
+      hideAllDropdowns() {
+        document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+      }
+
+      // 设置编辑模式突出显示
+      setEditHighlight(id, color) {
+        const card = document.getElementById(`item-${id}`);
+        if (!card) return;
+
+        const editor = card.querySelector('.edit-rich-content');
+        if (editor) {
+          editor.focus();
+          document.execCommand('styleWithCSS', false, true);
+          document.execCommand('backColor', false, color);
+        }
+
+        // 更新下拉项激活状态
+        const menu = document.getElementById(`highlight-menu-${id}`);
+        if (menu) {
+          menu.querySelectorAll('.dropdown-item').forEach(item => {
+            const onclickAttr = item.getAttribute('onclick') || '';
+            item.classList.toggle('active', onclickAttr.includes(color));
+          });
+        }
+
+        // 关闭菜单
+        this.hideAllDropdowns();
+      }
+
+      addEditCloze(id) {
+        const card = document.getElementById(`item-${id}`);
+        const editor = card?.querySelector('.edit-rich-content');
+        if (editor) editor.focus();
+        addCloze();
+      }
+
+      removeEditCloze(id) {
+        const card = document.getElementById(`item-${id}`);
+        const editor = card?.querySelector('.edit-rich-content');
+        if (editor) editor.focus();
+        removeCloze();
+      }
+
+      async rateReview(id, rating) {
+        if (this.editingId === id) await this.saveEdit(id);
+        const item = this.reviewItems.find(i => i.id === id);
+        if (!item) return;
+
+        item.reviewCount++;
+        item.completedReviews.push(new Date());
+
+        if (item.easeFactor === undefined) item.easeFactor = 2.5;
+        if (item.lastIntervalDays === undefined) item.lastIntervalDays = 0;
+
+        let nextDays = 1;
+        let notificationMsg = '';
+        const maxStage = this.reviewIntervals.length - 1;
+        const isInDynamicPhase = item.currentInterval >= maxStage;
+
+        switch (rating) {
+          case 'forget':
+            item.currentInterval = 0;
+            item.easeFactor = Math.max(1.3, item.easeFactor - 0.2);
+            nextDays = this.reviewIntervals[0];
+            item.lastIntervalDays = nextDays;
+            notificationMsg = '😰 已重置，明天再复习';
+            break;
+
+          case 'hard':
+            if (isInDynamicPhase) {
+              item.easeFactor = Math.max(1.3, item.easeFactor - 0.15);
+              const baseInterval = item.lastIntervalDays || 60;
+              nextDays = Math.max(1, Math.round(baseInterval * 1.2));
+              item.lastIntervalDays = nextDays;
+            } else {
+              const nextStageDays = this.reviewIntervals[item.currentInterval + 1];
+              nextDays = Math.max(1, Math.floor(nextStageDays / 2));
+              item.currentInterval++;
+              item.lastIntervalDays = nextDays;
+            }
+            notificationMsg = '😓 加油，保持复习';
+            break;
+
+          case 'good':
+            if (isInDynamicPhase) {
+              const baseInterval = item.lastIntervalDays || 60;
+              nextDays = Math.round(baseInterval * item.easeFactor);
+              item.lastIntervalDays = nextDays;
+            } else {
+              item.currentInterval++;
+              nextDays = this.reviewIntervals[item.currentInterval];
+              item.lastIntervalDays = nextDays;
+            }
+            notificationMsg = '😊 复习完成！';
+            break;
+
+          case 'easy':
+            item.easeFactor = Math.min(3.0, item.easeFactor + 0.1);
+            if (isInDynamicPhase) {
+              const baseInterval = item.lastIntervalDays || 60;
+              nextDays = Math.round(baseInterval * item.easeFactor * 1.3);
+              item.lastIntervalDays = nextDays;
+            } else {
+              if (item.currentInterval < maxStage - 1) {
+                item.currentInterval += 2;
+              } else {
+                item.currentInterval = maxStage;
+              }
+              nextDays = this.reviewIntervals[item.currentInterval];
+              item.lastIntervalDays = nextDays;
+            }
+            notificationMsg = '😎 太棒了！';
+            break;
+        }
+
+        item.nextReview = new Date(Date.now() + nextDays * 24 * 60 * 60 * 1000);
+
+        try {
+          await this.storage.updateItem(id, item);
+          this.backupToLocalStorage();
+          this.render();
+          this.updateStats();
+          this.updateBellReminder();
+          this.showNotification(`${notificationMsg} (${nextDays}天后)`);
+        } catch (e) {
+          console.error('更新失败:', e);
+          this.showNotification('❌ 同步失败，请检查网络', true);
+        }
+      }
+
+      async deleteItem(id) {
+        if (!confirm('确定删除？')) return;
+
+        try {
+          await this.storage.deleteItem(id);
+          this.reviewItems = this.reviewItems.filter(i => i.id !== id);
+          this.backupToLocalStorage();
+          this.editingId = null;
+          this.render();
+          this.updateStats();
+          this.updateBellReminder();
+          this.showNotification('🗑️ 已删除');
+        } catch (e) {
+          console.error('删除失败:', e);
+          this.showNotification('❌ 删除失败，请检查网络', true);
+        }
+      }
+
+      async clearAllData() {
+        if (!confirm('⚠️ 清空后不可恢复，确定吗？')) return;
+        if (!confirm('再次确认：真的要清空？')) return;
+
+        try {
+          await this.storage.clearAllItems();
+          this.reviewItems = [];
+          this.editingId = null;
+          localStorage.removeItem('reviewItems_backup');
+          this.render();
+          this.updateStats();
+          this.updateBellReminder();
+          this.showNotification('🗑️ 已清空');
+        } catch (e) {
+          console.error('清空失败:', e);
+          this.showNotification('❌ 清空失败，请检查网络', true);
+        }
+      }
+
+      updateBellReminder() {
+        const c = this.categorizeItems();
+        const count = c.urgent.length + c.today.length;
+        const bellCount = document.getElementById('bellCount');
+        const bellText = document.querySelector('.bell-text');
+
+        if (bellCount) {
+          bellCount.textContent = count;
+          bellCount.className = 'bell-count';
+          if (count === 0) {
+            bellCount.classList.add('zero');
+            if (bellText) bellText.textContent = '已完成';
+          } else if (c.urgent.length > 0) {
+            bellCount.classList.add('urgent');
+            if (bellText) bellText.textContent = '紧急复习';
+          } else {
+            if (bellText) bellText.textContent = '待复习';
+          }
+        }
+
+        const todaySectionTitle = document.getElementById('todaySectionTitle');
+        if (todaySectionTitle) {
+          if (c.today.length > 0 || c.urgent.length > 0) {
+            todaySectionTitle.style.color = '#ff6b6b';
+            todaySectionTitle.innerHTML = '📅 今日复习 <span style="font-size:0.6em;background:#ffd700;color:#333;padding:2px 8px;border-radius:10px;">' + count + '个待办</span>';
+          } else {
+            todaySectionTitle.style.color = '';
+            todaySectionTitle.innerHTML = '📅 今日复习';
+          }
+        }
+      }
+
+      categorizeItems() {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const three = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
+        return {
+          urgent: this.reviewItems.filter(i => i.nextReview < today),
+          today: this.reviewItems.filter(i => {
+            const d = new Date(i.nextReview);
+            return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() === today.getTime();
+          }),
+          upcoming: this.reviewItems.filter(i => i.nextReview > today && i.nextReview <= three),
+          future: this.reviewItems.filter(i => i.nextReview > three)
+        };
+      }
+
+      searchItems(query) {
+        const categories = this.categorizeItems();
+
+        if (!query) {
+          return categories;
+        }
+
+        const keyword = query.toLowerCase();
+        return {
+          urgent: categories.urgent.filter(i => i.title.toLowerCase().includes(keyword)),
+          today: categories.today.filter(i => i.title.toLowerCase().includes(keyword)),
+          upcoming: categories.upcoming.filter(i => i.title.toLowerCase().includes(keyword)),
+          future: categories.future.filter(i => i.title.toLowerCase().includes(keyword))
+        };
+      }
+
+      render() {
+        const c = this.searchItems(this.currentSearchQuery);
+        this.renderCat('urgentItems', c.urgent, 'urgent');
+        this.renderCat('todayItems', c.today, 'due-soon');
+        this.renderCat('upcomingItems', c.upcoming, 'upcoming');
+        this.renderCat('futureItems', c.future, 'future');
+      }
+
+      changeSlide(sectionId, delta) {
+        if (this.slideState[sectionId] === undefined) this.slideState[sectionId] = 0;
+        this.slideState[sectionId] += delta;
+        const c = this.searchItems(this.currentSearchQuery);
+        switch (sectionId) {
+          case 'urgentItems': this.renderCat('urgentItems', c.urgent, 'urgent'); break;
+          case 'todayItems': this.renderCat('todayItems', c.today, 'due-soon'); break;
+          case 'upcomingItems': this.renderCat('upcomingItems', c.upcoming, 'upcoming'); break;
+          case 'futureItems': this.renderCat('futureItems', c.future, 'future'); break;
+        }
+      }
+
+      renderCat(elementId, items, cls) {
+        const box = document.getElementById(elementId);
+        if (!items.length) {
+          const isEmptyState = !this.currentSearchQuery;
+          box.innerHTML = `<div class="empty-state"><span style="font-size:2em">${isEmptyState ? '🎉' : '🔍'}</span><p>${isEmptyState ? '暂无内容' : '无匹配结果'}</p></div>`;
+          this.slideState[elementId] = 0;
+          return;
+        }
+
+        let currentIndex = this.slideState[elementId] || 0;
+        if (currentIndex >= items.length) currentIndex = items.length - 1;
+        if (currentIndex < 0) currentIndex = 0;
+        this.slideState[elementId] = currentIndex;
+
+        const currentItem = items[currentIndex];
+        const isFirst = currentIndex === 0;
+        const isLast = currentIndex === items.length - 1;
+
+        const controlsHTML = `
       <div class="card-controls ${cls}">
         <button class="nav-btn" onclick="reviewSystem.changeSlide('${elementId}', -1)" ${isFirst ? 'disabled' : ''} title="上一张">❮</button>
         <span class="page-indicator">第 ${currentIndex + 1} / ${items.length} 项</span>
@@ -2151,19 +3415,19 @@ class EbbinghausReviewSystem {
       </div>
     `;
 
-    box.innerHTML = controlsHTML + this.itemHTML(currentItem, cls + ' card-view-item');
-  }
+        box.innerHTML = controlsHTML + this.itemHTML(currentItem, cls + ' card-view-item');
+      }
 
-  itemHTML(item, cls) {
-    const isEditing = this.editingId === item.id;
-    const dots = this.reviewIntervals.map((_, idx) => {
-      let c = 'cycle-dot';
-      if (idx < item.currentInterval) c += ' completed';
-      else if (idx === item.currentInterval) c += ' current';
-      return `<div class="${c}"></div>`;
-    }).join('');
+      itemHTML(item, cls) {
+        const isEditing = this.editingId === item.id;
+        const dots = this.reviewIntervals.map((_, idx) => {
+          let c = 'cycle-dot';
+          if (idx < item.currentInterval) c += ' completed';
+          else if (idx === item.currentInterval) c += ' current';
+          return `<div class="${c}"></div>`;
+        }).join('');
 
-    return `
+        return `
       <div class="review-item ${cls} ${isEditing ? 'editing' : ''}" id="item-${item.id}">
         <div class="view-mode" style="${isEditing ? 'display:none' : 'display:block'}">
           <div class="item-header">
@@ -2199,25 +3463,61 @@ class EbbinghausReviewSystem {
             <label style="font-weight:600;color:#495057;display:block;margin-bottom:5px;">内容</label>
             <div class="edit-rich-editor">
               <div class="editor-toolbar" style="padding:6px;flex-wrap:wrap;">
-                <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'bold')"><b>B</b></button>
-                <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'italic')"><i>I</i></button>
-                <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'underline')"><u>U</u></button>
-                <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'strikeThrough')"><s>S</s></button>
+                <button type="button" onmousedown="event.preventDefault()" onclick="reviewSystem.formatEditDoc(${item.id}, 'bold')"><b>B</b></button>
+                <button type="button" onmousedown="event.preventDefault()" onclick="reviewSystem.formatEditDoc(${item.id}, 'italic')"><i>I</i></button>
+                <button type="button" onmousedown="event.preventDefault()" onclick="reviewSystem.formatEditDoc(${item.id}, 'underline')"><u>U</u></button>
+                <button type="button" onmousedown="event.preventDefault()" onclick="reviewSystem.formatEditDoc(${item.id}, 'strikeThrough')"><s>S</s></button>
                 <div class="toolbar-divider"></div>
                 <div class="color-picker" title="文字颜色">
-                  <button type="button" class="color-btn" style="background:#ff0000" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#ff0000')" title="红色"></button>
-                  <button type="button" class="color-btn" style="background:#ffa500" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#ffa500')" title="橙色"></button>
-                  <button type="button" class="color-btn" style="background:#ffff00" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#ffff00')" title="黄色"></button>
-                  <button type="button" class="color-btn" style="background:#008000" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#008000')" title="绿色"></button>
-                  <button type="button" class="color-btn" style="background:#00ffff" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#00ffff')" title="青色"></button>
-                  <button type="button" class="color-btn" style="background:#0000ff" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#0000ff')" title="蓝色"></button>
-                  <button type="button" class="color-btn" style="background:#800080" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#800080')" title="紫色"></button>
-                  <button type="button" class="color-btn" style="background:#000000" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#000000')" title="黑色"></button>
+                  <button type="button" class="color-btn" style="background:#ff0000" onmousedown="event.preventDefault()" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#ff0000')" title="红色"></button>
+                  <button type="button" class="color-btn" style="background:#ffa500" onmousedown="event.preventDefault()" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#ffa500')" title="橙色"></button>
+                  <button type="button" class="color-btn" style="background:#ffff00" onmousedown="event.preventDefault()" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#ffff00')" title="黄色"></button>
+                  <button type="button" class="color-btn" style="background:#008000" onmousedown="event.preventDefault()" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#008000')" title="绿色"></button>
+                  <button type="button" class="color-btn" style="background:#00ffff" onmousedown="event.preventDefault()" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#00ffff')" title="青色"></button>
+                  <button type="button" class="color-btn" style="background:#0000ff" onmousedown="event.preventDefault()" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#0000ff')" title="蓝色"></button>
+                  <button type="button" class="color-btn" style="background:#800080" onmousedown="event.preventDefault()" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#800080')" title="紫色"></button>
+                  <button type="button" class="color-btn" style="background:#000000" onmousedown="event.preventDefault()" onclick="reviewSystem.formatEditDoc(${item.id}, 'foreColor', '#000000')" title="黑色"></button>
                 </div>
                 <div class="toolbar-divider"></div>
-                <button type="button" onclick="reviewSystem.formatEditDoc(${item.id}, 'removeFormat')">🧹</button>
-                <button type="button" onclick="removeEditCloze(${item.id})" title="清除遮挡">🔓</button>
-                <button type="button" onclick="addEditCloze(${item.id})" title="添加遮挡">🔒 遮挡</button>
+
+                <div class="toolbar-dropdown">
+                  <button type="button" class="dropdown-button" onmousedown="event.preventDefault()" onclick="reviewSystem.toggleEditDropdown(${item.id}, 'font-size-menu-${item.id}')">
+                    <span id="current-font-${item.id}">16px</span>
+                    <span class="dropdown-arrow">▼</span>
+                  </button>
+                  <div class="dropdown-menu" id="font-size-menu-${item.id}">
+                    <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="reviewSystem.setEditFontSize(${item.id}, '12px')">12px 小号</div>
+                    <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="reviewSystem.setEditFontSize(${item.id}, '14px')">14px 稍小</div>
+                    <div class="dropdown-item active" onmousedown="event.preventDefault()" onclick="reviewSystem.setEditFontSize(${item.id}, '16px')">16px 正常</div>
+                    <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="reviewSystem.setEditFontSize(${item.id}, '18px')">18px 稍大</div>
+                    <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="reviewSystem.setEditFontSize(${item.id}, '20px')">20px 中号</div>
+                    <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="reviewSystem.setEditFontSize(${item.id}, '24px')">24px 大号</div>
+                    <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="reviewSystem.setEditFontSize(${item.id}, '32px')">32px 超大</div>
+                  </div>
+                </div>
+
+                <div class="toolbar-dropdown">
+                  <button type="button" class="dropdown-button" onmousedown="event.preventDefault()" onclick="reviewSystem.toggleEditDropdown(${item.id}, 'highlight-menu-${item.id}')">
+                    <span>🖍️</span>
+                    <span class="dropdown-arrow">▼</span>
+                  </button>
+                  <div class="dropdown-menu" id="highlight-menu-${item.id}">
+                    <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="reviewSystem.setEditHighlight(${item.id}, '#ffcccc')">🟥 红色高亮</div>
+                    <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="reviewSystem.setEditHighlight(${item.id}, '#ffd6a5')">🟧 橙色高亮</div>
+                    <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="reviewSystem.setEditHighlight(${item.id}, '#ffff00')">🟨 黄色高亮</div>
+                    <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="reviewSystem.setEditHighlight(${item.id}, '#90EE90')">🟩 绿色高亮</div>
+                    <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="reviewSystem.setEditHighlight(${item.id}, '#e0ffff')">💠 青色高亮</div>
+                    <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="reviewSystem.setEditHighlight(${item.id}, '#ADD8E6')">🟦 蓝色高亮</div>
+                    <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="reviewSystem.setEditHighlight(${item.id}, '#DDA0DD')">🟪 紫色高亮</div>
+                    <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="reviewSystem.setEditHighlight(${item.id}, '#e9ecef')">⬛ 灰色高亮</div>
+                    <div class="dropdown-item" onmousedown="event.preventDefault()" onclick="reviewSystem.setEditHighlight(${item.id}, 'transparent')">⬜ 清除高亮</div>
+                  </div>
+                </div>
+
+                <div class="toolbar-divider"></div>
+                <button type="button" onmousedown="event.preventDefault()" onclick="reviewSystem.formatEditDoc(${item.id}, 'removeFormat')">🧹</button>
+                <button type="button" onmousedown="event.preventDefault()" onclick="reviewSystem.removeEditCloze(${item.id})" title="清除遮挡">🔓</button>
+                <button type="button" onmousedown="event.preventDefault()" onclick="reviewSystem.addEditCloze(${item.id})" title="添加遮挡">🔒 遮挡</button>
               </div>
               <div class="edit-rich-content editor-content" contenteditable="true" style="min-height:100px;">${this.clozeToEditFormat(item.content)}</div>
             </div>
@@ -2228,119 +3528,136 @@ class EbbinghausReviewSystem {
           </div>
         </div>
       </div>`;
-  }
+      }
 
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  }
+      escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      }
 
-  parseCloze(content) {
-    return content.replace(/\{\{c(\d+)::([\s\S]*?)\}\}/g, (match, num, text) => {
-      const encoded = encodeURIComponent(text);
-      return `<span class="cloze" data-content="${encoded}" onclick="this.className='';this.innerHTML=decodeURIComponent(this.dataset.content)">[点击显示]</span>`;
-    });
-  }
+      parseCloze(content) {
+        return content.replace(/\{\{c(\d+)::([\s\S]*?)\}\}/g, (match, num, text) => {
+          const encoded = encodeURIComponent(text);
+          return `<span class="cloze" data-content="${encoded}" onclick="this.className='';this.innerHTML=decodeURIComponent(this.dataset.content)">[点击显示]</span>`;
+        });
+      }
 
-  clozeToEditFormat(content) {
-    return content.replace(/\{\{c(\d+)::([\s\S]*?)\}\}/g, (match, num, text) => {
-      return `<span class="cloze-edit" data-cloze-num="${num}">${text}</span>`;
-    });
-  }
+      clozeToEditFormat(content) {
+        return content.replace(/\{\{c(\d+)::([\s\S]*?)\}\}/g, (match, num, text) => {
+          return `<span class="cloze-edit" data-cloze-num="${num}">${text}</span>`;
+        });
+      }
 
-  editFormatToCloze(content) {
-    let result = content;
-    let changed = true;
+      editFormatToCloze(content) {
+        let result = content;
+        let changed = true;
 
-    while (changed) {
-      changed = false;
-      const startMatch = result.match(/<span([^>]*)class="cloze-edit"([^>]*)>/i);
-      if (!startMatch) break;
+        while (changed) {
+          changed = false;
+          const startMatch = result.match(/<span([^>]*)class="cloze-edit"([^>]*)>/i);
+          if (!startMatch) break;
 
-      const startIndex = startMatch.index;
-      const afterStart = startIndex + startMatch[0].length;
+          const startIndex = startMatch.index;
+          const afterStart = startIndex + startMatch[0].length;
 
-      let depth = 1;
-      let endIndex = afterStart;
-      let lastEnd = afterStart;
-      const rest = result.substring(afterStart);
-      const tagRegex = /<\/?span[^>]*>/gi;
-      let match;
+          let depth = 1;
+          let endIndex = afterStart;
+          let lastEnd = afterStart;
+          const rest = result.substring(afterStart);
+          const tagRegex = /<\/?span[^>]*>/gi;
+          let match;
 
-      while ((match = tagRegex.exec(rest)) !== null && depth > 0) {
-        if (match[0].startsWith('</')) {
-          depth--;
-          if (depth === 0) {
-            endIndex = afterStart + match.index;
-            lastEnd = afterStart + match.index + match[0].length;
+          while ((match = tagRegex.exec(rest)) !== null && depth > 0) {
+            if (match[0].startsWith('</')) {
+              depth--;
+              if (depth === 0) {
+                endIndex = afterStart + match.index;
+                lastEnd = afterStart + match.index + match[0].length;
+              }
+            } else {
+              depth++;
+            }
           }
-        } else {
-          depth++;
+
+          if (depth === 0) {
+            const innerContent = result.substring(afterStart, endIndex);
+            const before = result.substring(0, startIndex);
+            const after = result.substring(lastEnd);
+            result = before + `{{c1::${innerContent}}}` + after;
+            changed = true;
+          } else {
+            break;
+          }
+        }
+
+        return result;
+      }
+
+      updateStats() {
+        const c = this.categorizeItems();
+        const today = new Date();
+        const doneToday = this.reviewItems.filter(i =>
+          i.completedReviews.some(d => new Date(d).toDateString() === today.toDateString())
+        ).length;
+        document.getElementById('totalItems').textContent = this.reviewItems.length;
+        document.getElementById('dueToday').textContent = c.urgent.length + c.today.length;
+        document.getElementById('completedToday').textContent = doneToday;
+        document.getElementById('streakDays').textContent = this.calcStreak();
+      }
+
+      calcStreak() {
+        let streak = 0;
+        let d = new Date();
+        while (streak < 365) {
+          const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+          const has = this.reviewItems.some(i =>
+            i.completedReviews.some(r => new Date(r).toDateString() === day.toDateString())
+          );
+          if (has) { streak++; d.setDate(d.getDate() - 1); } else break;
+        }
+        return streak;
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (reviewSystem.editingId) {
+        if (e.ctrlKey && e.key === 'Enter') {
+          e.preventDefault();
+          reviewSystem.saveEdit(reviewSystem.editingId);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          reviewSystem.cancelEdit(reviewSystem.editingId);
         }
       }
-
-      if (depth === 0) {
-        const innerContent = result.substring(afterStart, endIndex);
-        const before = result.substring(0, startIndex);
-        const after = result.substring(lastEnd);
-        result = before + `{{c1::${innerContent}}}` + after;
-        changed = true;
-      } else {
-        break;
+    });
+    // 点击外部关闭所有下拉菜单
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.toolbar-dropdown')) {
+        document.querySelectorAll('.dropdown-menu').forEach(menu => {
+          menu.classList.remove('show');
+        });
       }
-    }
+    });
 
-    return result;
-  }
-
-  updateStats() {
-    const c = this.categorizeItems();
-    const today = new Date();
-    const doneToday = this.reviewItems.filter(i =>
-      i.completedReviews.some(d => new Date(d).toDateString() === today.toDateString())
-    ).length;
-    document.getElementById('totalItems').textContent = this.reviewItems.length;
-    document.getElementById('dueToday').textContent = c.urgent.length + c.today.length;
-    document.getElementById('completedToday').textContent = doneToday;
-    document.getElementById('streakDays').textContent = this.calcStreak();
-  }
-
-  calcStreak() {
-    let streak = 0;
-    let d = new Date();
-    while (streak < 365) {
-      const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-      const has = this.reviewItems.some(i =>
-        i.completedReviews.some(r => new Date(r).toDateString() === day.toDateString())
-      );
-      if (has) { streak++; d.setDate(d.getDate() - 1); } else break;
-    }
-    return streak;
-  }
-}
-
-document.addEventListener('keydown', (e) => {
-  if (reviewSystem.editingId) {
-    if (e.ctrlKey && e.key === 'Enter') {
-      e.preventDefault();
-      reviewSystem.saveEdit(reviewSystem.editingId);
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      reviewSystem.cancelEdit(reviewSystem.editingId);
-    }
-  }
-});
-
-const reviewSystem = new EbbinghausReviewSystem();
-reviewSystem.init().then(() => console.log('✅ V14 多端实时同步版启动'));
+    const reviewSystem = new EbbinghausReviewSystem();
+    /* 修复点 4：删除了重复定义的 `const reviewSystem = new EbbinghausReviewSystem();`，解决了 SyntaxError: Identifier 'reviewSystem' has already been declared */
+    reviewSystem.init().then(() => console.log('✅ V15 功能增强版启动'));
   </script>
 
   <style>
     @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
     }
   </style>
 </body>
+
 </html>
