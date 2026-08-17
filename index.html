@@ -1678,6 +1678,8 @@
         const { data, error } = await this.supabase
           .from(this.pagesTable)
           .select('*')
+          .order('is_pinned', { ascending: false })
+          .order('pinned_at', { ascending: true, nullsFirst: false })
           .order('sort_order', { ascending: true });
         if (error) throw error;
         return data || [];
@@ -1686,7 +1688,7 @@
       async addPage(name, sortOrder = 0) {
         const { data, error } = await this.supabase
           .from(this.pagesTable)
-          .insert([{ name, sort_order: sortOrder }])
+          .insert([{ name, sort_order: sortOrder, is_pinned: false }])
           .select();
         if (error) throw error;
         return data?.[0];
@@ -1696,6 +1698,17 @@
         const { error } = await this.supabase
           .from(this.pagesTable)
           .update({ name })
+          .eq('id', id);
+        if (error) throw error;
+      }
+
+      async updatePagePin(id, isPinned) {
+        const { error } = await this.supabase
+          .from(this.pagesTable)
+          .update({
+            is_pinned: isPinned,
+            pinned_at: isPinned ? new Date().toISOString() : null
+          })
           .eq('id', id);
         if (error) throw error;
       }
@@ -1829,7 +1842,9 @@
           id: dbPage.id,
           name: dbPage.name,
           createdAt: new Date(dbPage.created_at),
-          sortOrder: dbPage.sort_order || 0
+          sortOrder: dbPage.sort_order || 0,
+          isPinned: dbPage.is_pinned === true,
+          pinnedAt: dbPage.pinned_at ? new Date(dbPage.pinned_at) : null
         };
       }
     }
@@ -2399,7 +2414,7 @@
 
           const icon = document.createElement('span');
           icon.className = 'page-item-icon';
-          icon.textContent = '📁';
+          icon.textContent = page.isPinned ? '📌' : '📁';
           item.appendChild(icon);
 
           if (isRenaming) {
@@ -2506,16 +2521,25 @@
       showContextMenu(e, pageId) {
         e.preventDefault();
         const menu = document.getElementById('contextMenu');
-        const page = this.pages.find(p => p.id === pageId);
+        const page = this.pages.find(p => String(p.id) === String(pageId));
+        if (!menu || !page) return;
 
-        menu.innerHTML = `
-      <div class="context-menu-item" onclick="reviewSystem.startRenamePage(${pageId}); reviewSystem.hideContextMenu();">
-        ✏️ 重命名
-      </div>
-      <div class="context-menu-item" onclick="reviewSystem.deletePage(${pageId}); reviewSystem.hideContextMenu();">
-        🗑️ 删除分区
-      </div>
-    `;
+        menu.innerHTML = '';
+        const createMenuItem = (label, handler) => {
+          const item = document.createElement('div');
+          item.className = 'context-menu-item';
+          item.textContent = label;
+          item.addEventListener('click', (event) => {
+            event.stopPropagation();
+            this.hideContextMenu();
+            handler();
+          });
+          menu.appendChild(item);
+        };
+
+        createMenuItem('✏️ 重命名', () => this.startRenamePage(page.id));
+        createMenuItem(page.isPinned ? '📌 取消置顶' : '📌 置顶', () => this.togglePagePin(page.id));
+        createMenuItem('🗑️ 删除分区', () => this.deletePage(page.id));
 
         menu.style.display = 'block';
         menu.style.left = `${e.clientX}px`;
@@ -2527,6 +2551,29 @@
           document.removeEventListener('click', hide);
         };
         setTimeout(() => document.addEventListener('click', hide), 10);
+      }
+
+      async togglePagePin(pageId) {
+        const page = this.pages.find(p => String(p.id) === String(pageId));
+        if (!page) return;
+        const nextPinned = !page.isPinned;
+        try {
+          await this.storage.updatePagePin(page.id, nextPinned);
+          page.isPinned = nextPinned;
+          page.pinnedAt = nextPinned ? new Date() : null;
+          this.pages.sort((a, b) => {
+            if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+            const aPinned = a.pinnedAt?.getTime() ?? Number.MAX_SAFE_INTEGER;
+            const bPinned = b.pinnedAt?.getTime() ?? Number.MAX_SAFE_INTEGER;
+            return aPinned - bPinned || (a.sortOrder || 0) - (b.sortOrder || 0);
+          });
+          this.backupToLocalStorage();
+          this.renderPageList();
+          this.showNotification(nextPinned ? '📌 已置顶' : '📌 已取消置顶');
+        } catch (error) {
+          console.error('置顶操作失败:', error);
+          this.showNotification('❌ 置顶操作失败，请检查数据库字段 is_pinned/pinned_at', true);
+        }
       }
 
       hideContextMenu() {
@@ -2619,6 +2666,7 @@
         console.log('收到项目变更:', payload.eventType);
         // 重新加载当前分页数据并刷新界面
         await this.loadData();
+        this.renderPageList();
         this.render();
         this.updateStats();
         this.updateBellReminder();
@@ -2669,6 +2717,7 @@
               nextReview: new Date(item.nextReview),
               completedReviews: (item.completedReviews || []).map(d => new Date(d))
             }));
+            this.allReviewItems = this.reviewItems;
           }
         } catch (e) {
           this.reviewItems = [];
@@ -2680,9 +2729,11 @@
           const backup = localStorage.getItem('pages_backup');
           if (backup) {
             const data = JSON.parse(backup);
-            this.pages = data.map(page => ({
+          this.pages = data.map(page => ({
               ...page,
-              createdAt: new Date(page.createdAt)
+              createdAt: new Date(page.createdAt),
+              pinnedAt: page.pinnedAt ? new Date(page.pinnedAt) : null,
+              isPinned: page.isPinned === true
             }));
           }
 
@@ -2713,7 +2764,7 @@
 
       backupToLocalStorage() {
         try {
-          localStorage.setItem('reviewItems_backup', JSON.stringify(this.reviewItems));
+          localStorage.setItem('reviewItems_backup', JSON.stringify(this.allReviewItems.length ? this.allReviewItems : this.reviewItems));
           localStorage.setItem('pages_backup', JSON.stringify(this.pages));
         } catch (e) {
           console.error('备份失败:', e);
@@ -3186,6 +3237,11 @@
         if (this.editingId === id) await this.saveEdit(id);
         const item = this.reviewItems.find(i => i.id === id);
         if (!item) return;
+        const previousItem = {
+          ...item,
+          completedReviews: [...item.completedReviews],
+          nextReview: new Date(item.nextReview)
+        };
 
         item.reviewCount++;
         item.completedReviews.push(new Date());
@@ -3211,7 +3267,7 @@
             if (isInDynamicPhase) {
               item.easeFactor = Math.max(1.3, item.easeFactor - 0.15);
               const baseInterval = item.lastIntervalDays || 60;
-              nextDays = Math.max(1, Math.round(baseInterval * 1.2));
+              nextDays = Math.max(1, Math.round(baseInterval * 1.1));
               item.lastIntervalDays = nextDays;
             } else {
               const nextStageDays = this.reviewIntervals[item.currentInterval + 1];
@@ -3259,12 +3315,18 @@
         try {
           await this.storage.updateItem(id, item);
           this.backupToLocalStorage();
+          this.renderPageList();
           this.render();
           this.updateStats();
           this.updateBellReminder();
           this.showNotification(`${notificationMsg} (${nextDays}天后)`);
         } catch (e) {
+          Object.assign(item, previousItem);
           console.error('更新失败:', e);
+          this.renderPageList();
+          this.render();
+          this.updateStats();
+          this.updateBellReminder();
           this.showNotification('❌ 同步失败，请检查网络', true);
         }
       }
@@ -3379,8 +3441,18 @@
 
       changeSlide(sectionId, delta) {
         if (this.slideState[sectionId] === undefined) this.slideState[sectionId] = 0;
-        this.slideState[sectionId] += delta;
         const c = this.searchItems(this.currentSearchQuery);
+        const items = {
+          urgentItems: c.urgent,
+          todayItems: c.today,
+          upcomingItems: c.upcoming,
+          futureItems: c.future
+        }[sectionId] || [];
+        if (items.length > 0) {
+          this.slideState[sectionId] = (this.slideState[sectionId] + delta + items.length) % items.length;
+        } else {
+          this.slideState[sectionId] = 0;
+        }
         switch (sectionId) {
           case 'urgentItems': this.renderCat('urgentItems', c.urgent, 'urgent'); break;
           case 'todayItems': this.renderCat('todayItems', c.today, 'due-soon'); break;
@@ -3409,9 +3481,9 @@
 
         const controlsHTML = `
       <div class="card-controls ${cls}">
-        <button class="nav-btn" onclick="reviewSystem.changeSlide('${elementId}', -1)" ${isFirst ? 'disabled' : ''} title="上一张">❮</button>
+        <button class="nav-btn" onclick="reviewSystem.changeSlide('${elementId}', -1)" title="上一张">❮</button>
         <span class="page-indicator">第 ${currentIndex + 1} / ${items.length} 项</span>
-        <button class="nav-btn" onclick="reviewSystem.changeSlide('${elementId}', 1)" ${isLast ? 'disabled' : ''} title="下一张">❯</button>
+        <button class="nav-btn" onclick="reviewSystem.changeSlide('${elementId}', 1)" title="下一张">❯</button>
       </div>
     `;
 
