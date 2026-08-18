@@ -1742,6 +1742,10 @@
 
       // ========== 项目管理方法 ==========
 
+      async getItemsByPage(pageId) {
+        return this.getAllItems(pageId);
+      }
+
       async getAllItems(pageId = null) {
         let query = this.supabase
           .from(this.tableName)
@@ -2101,6 +2105,9 @@
         this._dataRequestId = 0;
         this._contextMenuHide = null;
         this.connectionMode = 'unknown';
+        this.itemsByPage = new Map();
+        this.pageStats = new Map();
+        this.realtimeTimer = null;
       }
 
       normalizeId(value) {
@@ -2172,6 +2179,14 @@
         this.currentPageId = targetId;
         ++this._dataRequestId;
         this.slideState = {}; // 重置卡片索引状态
+        const cachedItems = this.itemsByPage.get(this.normalizeId(targetId));
+        if (cachedItems) {
+          this.reviewItems = cachedItems;
+          this.setActivePage(targetId);
+          this.render();
+          this.updateStats();
+          this.updateBellReminder();
+        }
         await this.loadData();
         if (this.normalizeId(this.currentPageId) !== this.normalizeId(targetId)) return;
         this.renderPageList();
@@ -2410,6 +2425,14 @@
       }
 
       // ========== 分页列表渲染（侧边栏） ==========
+
+      setActivePage(pageId) {
+        const list = document.getElementById('pageList');
+        if (!list) return;
+        list.querySelectorAll('.page-item.active').forEach(item => item.classList.remove('active'));
+        const target = list.querySelector(`[data-page-id="${CSS.escape(String(pageId))}"]`);
+        if (target) target.classList.add('active');
+      }
 
       renderPageList() {
         const list = document.getElementById('pageList');
@@ -2740,8 +2763,14 @@
         const items = await this.storage.getAllItems();
         if (requestId !== this._dataRequestId) return false;
         this.allReviewItems = items.map(item => this.storage.fromDbFormat(item));
+        this.itemsByPage = new Map();
+        this.allReviewItems.forEach(item => {
+          const key = this.normalizeId(item.pageId);
+          if (!this.itemsByPage.has(key)) this.itemsByPage.set(key, []);
+          this.itemsByPage.get(key).push(item);
+        });
         // 过滤当前页面的项目用于展示
-        this.reviewItems = this.allReviewItems.filter(i => this.normalizeId(i.pageId) === this.normalizeId(this.currentPageId));
+        this.reviewItems = this.itemsByPage.get(this.normalizeId(this.currentPageId)) || [];
         this.backupToLocalStorage();
         return true;
       }
