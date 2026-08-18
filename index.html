@@ -1816,6 +1816,7 @@
         if (item.completedReviews !== undefined) dbItem.completed_reviews = item.completedReviews.map(d => new Date(d).toISOString());
         if (item.easeFactor !== undefined) dbItem.ease_factor = item.easeFactor;
         if (item.lastIntervalDays !== undefined) dbItem.last_interval_days = item.lastIntervalDays;
+        if (item.lastReviewedAt !== undefined) dbItem.last_reviewed_at = item.lastReviewedAt ? new Date(item.lastReviewedAt).toISOString() : null;
         if (item.pageId !== undefined) dbItem.page_id = item.pageId;
         return dbItem;
       }
@@ -1832,6 +1833,7 @@
           completedReviews: (dbItem.completed_reviews || []).map(d => new Date(d)),
           easeFactor: dbItem.ease_factor || 2.5,
           lastIntervalDays: dbItem.last_interval_days || 0,
+          lastReviewedAt: dbItem.last_reviewed_at ? new Date(dbItem.last_reviewed_at) : null,
           pageId: dbItem.page_id || null
         };
       }
@@ -2095,6 +2097,14 @@
         // 确认弹窗回调
         this._modalConfirmCallback = null;
         this._modalCancelCallback = null;
+        this._pageRequestId = 0;
+        this._dataRequestId = 0;
+        this._contextMenuHide = null;
+        this.connectionMode = 'unknown';
+      }
+
+      normalizeId(value) {
+        return value === null || value === undefined ? '' : String(value);
       }
 
       async init() {
@@ -2126,8 +2136,16 @@
       // ========== 分页管理方法 ==========
 
       async loadPages() {
+        const requestId = ++this._pageRequestId;
         const pages = await this.storage.getAllPages();
+        if (requestId !== this._pageRequestId) return false;
         this.pages = pages.map(p => this.storage.fromDbPageFormat(p));
+        this.pages.sort((a, b) => {
+          if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+          const ap = a.pinnedAt ? new Date(a.pinnedAt).getTime() : Number.MAX_SAFE_INTEGER;
+          const bp = b.pinnedAt ? new Date(b.pinnedAt).getTime() : Number.MAX_SAFE_INTEGER;
+          return ap - bp || (a.sortOrder || 0) - (b.sortOrder || 0);
+        });
 
         // 如果没有分页，创建默认分页
         if (this.pages.length === 0) {
@@ -2136,8 +2154,9 @@
         }
 
         // 设置当前分页为第一个
-        if (!this.currentPageId && this.pages.length > 0) {
-          this.currentPageId = this.pages[0].id;
+        if (!this.pages.some(p => this.normalizeId(p.id) === this.normalizeId(this.currentPageId))) {
+          this.currentPageId = this.pages[0]?.id || null;
+          this.slideState = {};
         }
 
         // 备份到本地
@@ -2145,12 +2164,16 @@
       }
 
       async switchPage(pageId) {
+        const targetId = this.pages.find(p => this.normalizeId(p.id) === this.normalizeId(pageId))?.id;
+        if (targetId === undefined) return;
         if (this.editingId) {
           this.cancelEdit(this.editingId);
         }
-        this.currentPageId = pageId;
+        this.currentPageId = targetId;
+        ++this._dataRequestId;
         this.slideState = {}; // 重置卡片索引状态
         await this.loadData();
+        if (this.normalizeId(this.currentPageId) !== this.normalizeId(targetId)) return;
         this.renderPageList();
         this.render();
         this.updateStats();
@@ -2472,10 +2495,11 @@
             }
 
             // 使用 addEventListener 绑定事件
-            item.addEventListener('click', () => {
-              // 只有点击非当前页面时才切换，避免双击重命名时被干扰
-              if (page.id !== this.currentPageId) {
-                this.switchPage(page.id);
+            item.addEventListener('click', (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              if (this.normalizeId(page.id) !== this.normalizeId(this.currentPageId)) {
+                void this.switchPage(page.id);
               }
             });
             item.addEventListener('dblclick', (e) => {
@@ -2520,6 +2544,8 @@
 
       showContextMenu(e, pageId) {
         e.preventDefault();
+        e.stopPropagation();
+        this.hideContextMenu();
         const menu = document.getElementById('contextMenu');
         const page = this.pages.find(p => String(p.id) === String(pageId));
         if (!menu || !page) return;
@@ -2546,10 +2572,8 @@
         menu.style.top = `${e.clientY}px`;
 
         // 点击其他地方关闭
-        const hide = () => {
-          menu.style.display = 'none';
-          document.removeEventListener('click', hide);
-        };
+        const hide = () => this.hideContextMenu();
+        this._contextMenuHide = hide;
         setTimeout(() => document.addEventListener('click', hide), 10);
       }
 
@@ -2577,7 +2601,12 @@
       }
 
       hideContextMenu() {
-        document.getElementById('contextMenu').style.display = 'none';
+        if (this._contextMenuHide) {
+          document.removeEventListener('click', this._contextMenuHide);
+          this._contextMenuHide = null;
+        }
+        const menu = document.getElementById('contextMenu');
+        if (menu) menu.style.display = 'none';
       }
 
       // ========== 齿轮菜单方法 ==========
@@ -2664,19 +2693,26 @@
       // 处理 review_items 变更
       async handleItemChange(payload) {
         console.log('收到项目变更:', payload.eventType);
-        // 重新加载当前分页数据并刷新界面
-        await this.loadData();
-        this.renderPageList();
-        this.render();
-        this.updateStats();
-        this.updateBellReminder();
+        try {
+          await this.loadData();
+          this.renderPageList();
+          this.render();
+          this.updateStats();
+          this.updateBellReminder();
+        } catch (error) {
+          console.error('处理项目同步失败:', error);
+        }
       }
 
       // 处理 pages 变更
       async handlePageChange(payload) {
         console.log('收到分页变更:', payload.eventType);
-        await this.loadPages();
-        this.renderPageList();
+        try {
+          await this.loadPages();
+          this.renderPageList();
+        } catch (error) {
+          console.error('处理分页同步失败:', error);
+        }
       }
 
       deleteCurrentPage() {
@@ -2699,11 +2735,15 @@
       }
 
       async loadData() {
+        const requestId = ++this._dataRequestId;
         // 获取全部项目以计算所有分区的复习提醒
         const items = await this.storage.getAllItems();
+        if (requestId !== this._dataRequestId) return false;
         this.allReviewItems = items.map(item => this.storage.fromDbFormat(item));
         // 过滤当前页面的项目用于展示
-        this.reviewItems = this.allReviewItems.filter(i => i.pageId === this.currentPageId);
+        this.reviewItems = this.allReviewItems.filter(i => this.normalizeId(i.pageId) === this.normalizeId(this.currentPageId));
+        this.backupToLocalStorage();
+        return true;
       }
 
       loadLocalBackup() {
@@ -2718,6 +2758,7 @@
               completedReviews: (item.completedReviews || []).map(d => new Date(d))
             }));
             this.allReviewItems = this.reviewItems;
+            this.reviewItems = this.allReviewItems.filter(i => this.normalizeId(i.pageId) === this.normalizeId(this.currentPageId));
           }
         } catch (e) {
           this.reviewItems = [];
@@ -3310,6 +3351,7 @@
             break;
         }
 
+        item.lastReviewedAt = new Date();
         item.nextReview = new Date(Date.now() + nextDays * 24 * 60 * 60 * 1000);
 
         try {
