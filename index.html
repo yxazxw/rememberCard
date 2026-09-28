@@ -1098,11 +1098,15 @@
     .cloze-edit {
       display: inline;
       background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-      color: #fff;
+      color: #fff !important;
       padding: 1px 6px;
       border-radius: 3px;
       font-weight: 500;
       cursor: text
+    }
+
+    .cloze-edit * {
+      color: #fff !important;
     }
 
     .cloze-edit:focus {
@@ -2075,9 +2079,21 @@
       if (e.target.classList.contains('editor-content')) {
         if (e.ctrlKey || e.metaKey) {
           switch (e.key.toLowerCase()) {
-            case 'b': e.preventDefault(); formatDoc('bold'); break;
-            case 'i': e.preventDefault(); formatDoc('italic'); break;
-            case 'u': e.preventDefault(); formatDoc('underline'); break;
+            case 'b':
+              e.preventDefault();
+              e.stopPropagation();
+              formatDoc('bold');
+              break;
+            case 'i':
+              e.preventDefault();
+              e.stopPropagation();
+              formatDoc('italic');
+              break;
+            case 'u':
+              e.preventDefault();
+              e.stopPropagation();
+              formatDoc('underline');
+              break;
           }
         }
         // 延迟触发状态更新，确保 DOM 已响应
@@ -2928,6 +2944,30 @@
         const items = await this.storage.getAllItems();
         if (requestId !== this._dataRequestId) return false;
         this.allReviewItems = items.map(item => this.storage.fromDbFormat(item));
+
+        // 修正超过 90 天的复习间隔
+        const now = new Date();
+        const maxDays = 90;
+        let hasUpdates = false;
+
+        for (const item of this.allReviewItems) {
+          const daysDiff = (new Date(item.nextReview) - now) / (24 * 60 * 60 * 1000);
+          if (daysDiff > maxDays) {
+            item.nextReview = new Date(now.getTime() + maxDays * 24 * 60 * 60 * 1000);
+            item.lastIntervalDays = Math.min(item.lastIntervalDays || 0, maxDays);
+            try {
+              await this.storage.updateItem(item.id, item);
+              hasUpdates = true;
+            } catch (e) {
+              console.error('修正超期项目失败:', item.id, e);
+            }
+          }
+        }
+
+        if (hasUpdates) {
+          console.log('✅ 已自动修正超过 90 天的复习间隔');
+        }
+
         this.itemsByPage = new Map();
         this.allReviewItems.forEach(item => {
           const key = this.normalizeId(item.pageId);
@@ -3548,6 +3588,10 @@
             notificationMsg = '😎 太棒了！';
             break;
         }
+
+        // 限制最大复习间隔为 90 天
+        nextDays = Math.min(nextDays, 90);
+        item.lastIntervalDays = Math.min(item.lastIntervalDays, 90);
 
         item.lastReviewedAt = new Date();
         item.nextReview = new Date(Date.now() + nextDays * 24 * 60 * 60 * 1000);
