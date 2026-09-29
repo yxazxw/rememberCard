@@ -4504,7 +4504,23 @@
         console.log('✅ 登录成功，用户角色:', authManager.userRole);
       } catch (error) {
         console.error('登录失败:', error);
-        showError('loginError', error.message || '登录失败，请检查邮箱和密码');
+
+        // 处理不同类型的错误
+        let errorMessage = '登录失败，请检查邮箱和密码';
+
+        if (error.message) {
+          if (error.message.includes('Invalid login credentials')) {
+            errorMessage = '邮箱或密码错误';
+          } else if (error.message.includes('Email not confirmed')) {
+            errorMessage = '请先确认邮箱';
+          } else if (error.message.includes('Invalid email')) {
+            errorMessage = '邮箱格式不正确';
+          } else {
+            errorMessage = error.message;
+          }
+        }
+
+        showError('loginError', errorMessage);
       } finally {
         loginBtn.disabled = false;
         loginBtn.textContent = '登录';
@@ -4539,7 +4555,25 @@
         console.log('✅ 注册成功，用户角色:', authManager.userRole);
       } catch (error) {
         console.error('注册失败:', error);
-        showError('registerError', error.message || '注册失败，请稍后重试');
+
+        // 处理不同类型的错误
+        let errorMessage = '注册失败，请稍后重试';
+
+        if (error.message) {
+          if (error.message.includes('User already registered')) {
+            errorMessage = '该邮箱已被注册';
+          } else if (error.message.includes('Password should be at least')) {
+            errorMessage = '密码至少需要6位';
+          } else if (error.message.includes('Invalid email')) {
+            errorMessage = '邮箱格式不正确';
+          } else if (error.message.includes('rate limit')) {
+            errorMessage = '操作过于频繁，请稍后再试';
+          } else {
+            errorMessage = error.message;
+          }
+        }
+
+        showError('registerError', errorMessage);
       } finally {
         registerBtn.disabled = false;
         registerBtn.textContent = '注册';
@@ -4570,29 +4604,42 @@
       const registerPassword = document.getElementById('registerPassword');
       const registerPasswordConfirm = document.getElementById('registerPasswordConfirm');
 
+      // 邮箱输入框验证
       [loginEmail, registerEmail].forEach(input => {
         input.addEventListener('invalid', function(e) {
           e.preventDefault();
+          const parentForm = this.closest('form');
+          const errorId = parentForm.id === 'loginForm' ? 'loginError' : 'registerError';
+
           if (this.validity.valueMissing) {
-            this.setCustomValidity('请输入邮箱地址');
+            showError(errorId, '请输入邮箱地址');
           } else if (this.validity.typeMismatch) {
-            this.setCustomValidity('请输入有效的邮箱地址');
+            showError(errorId, '请输入有效的邮箱地址');
           }
         });
+
         input.addEventListener('input', function() {
           this.setCustomValidity('');
+          const parentForm = this.closest('form');
+          const errorId = parentForm.id === 'loginForm' ? 'loginError' : 'registerError';
+          hideError(errorId);
         });
       });
 
+      // 密码输入框验证
       [loginPassword, registerPassword, registerPasswordConfirm].forEach(input => {
         input.addEventListener('invalid', function(e) {
           e.preventDefault();
+          const parentForm = this.closest('form');
+          const errorId = parentForm.id === 'loginForm' ? 'loginError' : 'registerError';
+
           if (this.validity.valueMissing) {
-            this.setCustomValidity('请输入密码');
+            showError(errorId, '请输入密码');
           } else if (this.validity.tooShort) {
-            this.setCustomValidity('密码至少需要6位');
+            showError(errorId, '密码至少需要6位');
           }
         });
+
         input.addEventListener('input', function() {
           this.setCustomValidity('');
         });
