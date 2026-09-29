@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>复习提醒系统（V14 多端实时同步版）</title>
+  <title>好记鑫（V14 多端实时同步版）</title>
   <meta name="viewport" content="width=device-width,initial-scale=1.0" />
   <style>
     :root {
@@ -1432,11 +1432,359 @@
     @keyframes syncSpin {
       to { transform: rotate(360deg); }
     }
+
+    /* ========== 登录页面样式 ========== */
+    .login-page {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+
+    .login-page.active {
+      display: flex;
+    }
+
+    .login-card {
+      width: 90%;
+      max-width: 420px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+      padding: 40px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 30px;
+      position: relative;
+    }
+
+    .login-logo {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .login-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--primary-color);
+      margin-bottom: 4px;
+      position: relative;
+      display: inline-block;
+    }
+
+    .login-subtitle {
+      font-size: 14px;
+      color: #6c757d;
+    }
+
+    /* 国庆装饰元素 */
+    .national-day-deco {
+      position: absolute;
+      font-size: 20px;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    .deco-1 {
+      top: -5px;
+      left: -35px;
+      animation-delay: 0s;
+    }
+
+    .deco-2 {
+      top: -5px;
+      right: -35px;
+      animation-delay: 0.5s;
+    }
+
+    .deco-3 {
+      bottom: -8px;
+      left: -25px;
+      animation-delay: 1s;
+    }
+
+    .deco-4 {
+      bottom: -8px;
+      right: -25px;
+      animation-delay: 1.5s;
+    }
+
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0px);
+      }
+      50% {
+        transform: translateY(-8px);
+      }
+    }
+
+    .login-error {
+      background: #ffe6e6;
+      border: 1px solid #ff4444;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 20px;
+      color: #d32f2f;
+      font-size: 14px;
+      text-align: center;
+      display: none;
+    }
+
+    .login-error.show {
+      display: block;
+    }
+
+    .login-form {
+      margin-bottom: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #323130;
+      margin-bottom: 8px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 15px;
+      border: 2px solid #e1e1e1;
+      border-radius: 8px;
+      outline: none;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .form-input:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.1);
+    }
+
+    .form-input::placeholder {
+      color: #adb5bd;
+    }
+
+    .login-btn {
+      width: 100%;
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      color: #fff;
+      border: none;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 10px;
+    }
+
+    .login-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(79, 172, 254, 0.4);
+    }
+
+    .login-btn:active {
+      transform: translateY(0);
+    }
+
+    .login-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .login-footer {
+      text-align: center;
+      font-size: 14px;
+      padding-top: 15px;
+      border-top: 1px solid #e9ecef;
+    }
+
+    .footer-text {
+      color: #6c757d;
+    }
+
+    .footer-link {
+      color: var(--primary-color);
+      text-decoration: none;
+      font-weight: 600;
+      margin-left: 6px;
+      transition: opacity 0.2s;
+      cursor: pointer;
+    }
+
+    .footer-link:hover {
+      opacity: 0.8;
+      text-decoration: underline;
+    }
+
+    /* 移动端响应式 */
+    @media (max-width: 768px) {
+      .login-card {
+        padding: 30px 25px;
+        max-width: 95%;
+      }
+
+      .login-logo {
+        font-size: 40px;
+      }
+
+      .login-title {
+        font-size: 20px;
+      }
+    }
   </style>
   <base target="_blank">
 </head>
 
 <body>
+  <!-- 登录页面 -->
+  <div id="loginPage" class="login-page active">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-logo">📚</div>
+        <h1 class="login-title">
+          <span class="national-day-deco deco-1">🇨🇳</span>
+          好记鑫
+          <span class="national-day-deco deco-2">🇨🇳</span>
+          <span class="national-day-deco deco-3">🎉</span>
+          <span class="national-day-deco deco-4">🎊</span>
+        </h1>
+        <p class="login-subtitle">V14 多端实时同步版</p>
+      </div>
+
+      <div id="loginError" class="login-error"></div>
+
+      <form id="loginForm" class="login-form">
+        <div class="form-group">
+          <label class="form-label">邮箱</label>
+          <input
+            type="email"
+            id="loginEmail"
+            class="form-input"
+            placeholder="请输入邮箱地址"
+            autocomplete="email"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">密码</label>
+          <input
+            type="password"
+            id="loginPassword"
+            class="form-input"
+            placeholder="请输入密码"
+            autocomplete="current-password"
+            required
+          />
+        </div>
+
+        <button type="submit" class="login-btn" id="loginBtn">
+          登录
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <span class="footer-text">还没有账号？</span>
+        <a class="footer-link" id="showRegisterLink">立即注册</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 注册页面 -->
+  <div id="registerPage" class="login-page">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-logo">📚</div>
+        <h1 class="login-title">
+          <span class="national-day-deco deco-1">🇨🇳</span>
+          创建账号
+          <span class="national-day-deco deco-2">🇨🇳</span>
+          <span class="national-day-deco deco-3">🎉</span>
+          <span class="national-day-deco deco-4">🎊</span>
+        </h1>
+        <p class="login-subtitle">好记鑫</p>
+      </div>
+
+      <div id="registerError" class="login-error"></div>
+
+      <form id="registerForm" class="login-form">
+        <div class="form-group">
+          <label class="form-label">邮箱</label>
+          <input
+            type="email"
+            id="registerEmail"
+            class="form-input"
+            placeholder="请输入邮箱地址"
+            autocomplete="email"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">密码</label>
+          <input
+            type="password"
+            id="registerPassword"
+            class="form-input"
+            placeholder="请输入密码（至少6位）"
+            autocomplete="new-password"
+            minlength="6"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">确认密码</label>
+          <input
+            type="password"
+            id="registerPasswordConfirm"
+            class="form-input"
+            placeholder="请再次输入密码"
+            autocomplete="new-password"
+            minlength="6"
+            required
+          />
+        </div>
+
+        <button type="submit" class="login-btn" id="registerBtn">
+          注册
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <span class="footer-text">已有账号？</span>
+        <a class="footer-link" id="showLoginLink">返回登录</a>
+      </div>
+    </div>
+  </div>
+
   <div id="saveIndicator" class="save-indicator saved" style="display:none;">
     <span class="save-dot"></span>
     <span id="saveText">已同步</span>
@@ -1464,6 +1812,10 @@
               <div class="gear-menu-item"
                 onclick="event.stopPropagation(); reviewSystem.importFullBackup(); reviewSystem.toggleGearMenu(event);">
                 <span>📥</span> 导入总备份
+              </div>
+              <div class="gear-menu-item"
+                onclick="event.stopPropagation(); handleLogout(); reviewSystem.toggleGearMenu(event);">
+                <span>🚪</span> 退出登录
               </div>
             </div>
           </div>
@@ -1703,17 +2055,148 @@
     const SUPABASE_URL = 'https://seybjuagrwthgonvjesx.supabase.co';  // 替换为你的 Project URL
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNleWJqdWFncnd0aGdvbnZqZXN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Njc5NDAsImV4cCI6MjA4OTU0Mzk0MH0.Qy501V_HnmA5Gj2sNorIqUXlwuMaSmvRCDCKQmXijDQ';
 
+    // 全局 Supabase 客户端
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    /* ========== 认证管理类 ========== */
+    class AuthManager {
+      constructor() {
+        this.currentUser = null;
+        this.userRole = null;
+      }
+
+      // 检查当前会话
+      async checkAuth() {
+        const { data: { session }, error } = await supabaseClient.auth.getSession();
+        if (error) {
+          console.error('检查会话失败:', error);
+          return false;
+        }
+        if (session) {
+          this.currentUser = session.user;
+          await this.loadUserRole();
+          return true;
+        }
+        return false;
+      }
+
+      // 加载用户角色
+      async loadUserRole() {
+        if (!this.currentUser) return;
+        const { data, error } = await supabaseClient
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', this.currentUser.id)
+          .single();
+
+        if (error) {
+          console.error('加载用户角色失败:', error);
+          this.userRole = 'user';
+        } else {
+          this.userRole = data.role;
+        }
+      }
+
+      // 登录
+      async login(email, password) {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (error) throw error;
+
+        this.currentUser = data.user;
+        await this.loadUserRole();
+        return data;
+      }
+
+      // 注册
+      async register(email, password) {
+        const { data, error } = await supabaseClient.auth.signUp({
+          email,
+          password
+        });
+
+        if (error) throw error;
+
+        this.currentUser = data.user;
+        await this.loadUserRole();
+        return data;
+      }
+
+      // 登出
+      async logout() {
+        const { error } = await supabaseClient.auth.signOut();
+        if (error) throw error;
+        this.currentUser = null;
+        this.userRole = null;
+      }
+
+      // 是否为管理员
+      isAdmin() {
+        return this.userRole === 'admin';
+      }
+
+      // 获取当前用户ID
+      getUserId() {
+        return this.currentUser?.id;
+      }
+    }
+
+    const authManager = new AuthManager();
+
+    /* ========== 页面切换函数 ========== */
+    function showLoginPage() {
+      document.getElementById('loginPage').classList.add('active');
+      document.getElementById('registerPage').classList.remove('active');
+      document.querySelector('.app-container').style.display = 'none';
+    }
+
+    function showRegisterPage() {
+      document.getElementById('loginPage').classList.remove('active');
+      document.getElementById('registerPage').classList.add('active');
+      document.querySelector('.app-container').style.display = 'none';
+    }
+
+    function showMainApp() {
+      document.getElementById('loginPage').classList.remove('active');
+      document.getElementById('registerPage').classList.remove('active');
+      document.querySelector('.app-container').style.display = 'flex';
+    }
+
+    function showError(elementId, message) {
+      const errorDiv = document.getElementById(elementId);
+      errorDiv.textContent = message;
+      errorDiv.classList.add('show');
+    }
+
+    function hideError(elementId) {
+      const errorDiv = document.getElementById(elementId);
+      errorDiv.classList.remove('show');
+    }
+
+    /* ========== 登出函数 ========== */
+    async function handleLogout() {
+      try {
+        await authManager.logout();
+        showLoginPage();
+        console.log('✅ 已退出登录');
+      } catch (error) {
+        console.error('登出失败:', error);
+        alert('退出登录失败: ' + error.message);
+      }
+    }
+
     /* ========== Supabase 存储类 ========== */
     class SupabaseStorage {
       constructor() {
-        this.supabase = null;
+        this.supabase = supabaseClient;
         this.tableName = 'review_items';
         this.pagesTable = 'pages';
       }
 
       async init() {
-        // 先创建客户端
-        this.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         // 测试连接
         const { error } = await this.supabase.from(this.tableName).select('id').limit(1);
         if (error && error.code !== 'PGRST116') {
@@ -3999,9 +4482,145 @@
       }
     });
 
+    /* ========== 表单事件监听 ========== */
+    // 登录表单
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideError('loginError');
+
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const loginBtn = document.getElementById('loginBtn');
+
+      try {
+        loginBtn.disabled = true;
+        loginBtn.textContent = '登录中...';
+
+        await authManager.login(email, password);
+
+        // 登录成功，显示主应用
+        showMainApp();
+        await reviewSystem.init();
+        console.log('✅ 登录成功，用户角色:', authManager.userRole);
+      } catch (error) {
+        console.error('登录失败:', error);
+        showError('loginError', error.message || '登录失败，请检查邮箱和密码');
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = '登录';
+      }
+    });
+
+    // 注册表单
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideError('registerError');
+
+      const email = document.getElementById('registerEmail').value.trim();
+      const password = document.getElementById('registerPassword').value;
+      const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+      const registerBtn = document.getElementById('registerBtn');
+
+      // 验证密码一致性
+      if (password !== passwordConfirm) {
+        showError('registerError', '两次输入的密码不一致');
+        return;
+      }
+
+      try {
+        registerBtn.disabled = true;
+        registerBtn.textContent = '注册中...';
+
+        await authManager.register(email, password);
+
+        // 注册成功，显示主应用
+        showMainApp();
+        await reviewSystem.init();
+        console.log('✅ 注册成功，用户角色:', authManager.userRole);
+      } catch (error) {
+        console.error('注册失败:', error);
+        showError('registerError', error.message || '注册失败，请稍后重试');
+      } finally {
+        registerBtn.disabled = false;
+        registerBtn.textContent = '注册';
+      }
+    });
+
+    // 切换到注册页面
+    document.getElementById('showRegisterLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      showRegisterPage();
+      hideError('loginError');
+      hideError('registerError');
+    });
+
+    // 切换到登录页面
+    document.getElementById('showLoginLink').addEventListener('click', (e) => {
+      e.preventDefault();
+      showLoginPage();
+      hideError('loginError');
+      hideError('registerError');
+    });
+
+    // 表单验证中文提示
+    const setupValidation = () => {
+      const loginEmail = document.getElementById('loginEmail');
+      const loginPassword = document.getElementById('loginPassword');
+      const registerEmail = document.getElementById('registerEmail');
+      const registerPassword = document.getElementById('registerPassword');
+      const registerPasswordConfirm = document.getElementById('registerPasswordConfirm');
+
+      [loginEmail, registerEmail].forEach(input => {
+        input.addEventListener('invalid', function(e) {
+          e.preventDefault();
+          if (this.validity.valueMissing) {
+            this.setCustomValidity('请输入邮箱地址');
+          } else if (this.validity.typeMismatch) {
+            this.setCustomValidity('请输入有效的邮箱地址');
+          }
+        });
+        input.addEventListener('input', function() {
+          this.setCustomValidity('');
+        });
+      });
+
+      [loginPassword, registerPassword, registerPasswordConfirm].forEach(input => {
+        input.addEventListener('invalid', function(e) {
+          e.preventDefault();
+          if (this.validity.valueMissing) {
+            this.setCustomValidity('请输入密码');
+          } else if (this.validity.tooShort) {
+            this.setCustomValidity('密码至少需要6位');
+          }
+        });
+        input.addEventListener('input', function() {
+          this.setCustomValidity('');
+        });
+      });
+    };
+
+    setupValidation();
+
+    /* ========== 应用初始化 ========== */
     const reviewSystem = new EbbinghausReviewSystem();
+
+    // 启动时检查认证状态
+    (async () => {
+      const isAuthenticated = await authManager.checkAuth();
+
+      if (isAuthenticated) {
+        // 已登录，显示主应用
+        showMainApp();
+        await reviewSystem.init();
+        console.log('✅ 已登录，用户角色:', authManager.userRole);
+      } else {
+        // 未登录，显示登录页面
+        showLoginPage();
+        console.log('未登录，显示登录页面');
+      }
+    })();
+
     /* 修复点 4：删除了重复定义的 `const reviewSystem = new EbbinghausReviewSystem();`，解决了 SyntaxError: Identifier 'reviewSystem' has already been declared */
-    reviewSystem.init().then(() => console.log('✅ V15 功能增强版启动'));
   </script>
 
   <style>
