@@ -50,10 +50,22 @@
     }
 
     .sidebar-header {
-      padding: 25px 20px;
+      padding: 20px 20px 15px 20px;
+      border-bottom: 1px solid #edebe9;
+    }
+
+    .header-title {
       font-size: 18px;
       font-weight: 600;
       color: var(--primary-color);
+      margin-bottom: 8px;
+    }
+
+    .header-user {
+      font-size: 13px;
+      color: #6c757d;
+      word-break: break-all;
+      line-height: 1.4;
     }
 
     .page-list {
@@ -1686,6 +1698,7 @@
           <input
             type="email"
             id="loginEmail"
+            name="email"
             class="form-input"
             placeholder="请输入邮箱地址"
             autocomplete="email"
@@ -1698,6 +1711,7 @@
           <input
             type="password"
             id="loginPassword"
+            name="password"
             class="form-input"
             placeholder="请输入密码"
             autocomplete="current-password"
@@ -1792,7 +1806,10 @@
 
   <div class="app-container">
     <div class="sidebar" id="sidebar">
-      <div class="sidebar-header">复习系统</div>
+      <div class="sidebar-header">
+        <div class="header-title">复习系统</div>
+        <div class="header-user" id="currentUserEmail"></div>
+      </div>
       <div id="pageList" class="page-list"></div>
       <div class="sidebar-footer">
         <div class="footer-row">
@@ -2113,6 +2130,9 @@
 
       // 注册
       async register(email, password) {
+        // ✅ 修复：注册前先登出旧会话，防止数据混乱
+        await supabaseClient.auth.signOut();
+
         const { data, error } = await supabaseClient.auth.signUp({
           email,
           password
@@ -2127,7 +2147,8 @@
 
       // 登出
       async logout() {
-        const { error } = await supabaseClient.auth.signOut();
+        // ✅ 修复：使用 'local' scope 完全清除浏览器中的 session
+        const { error } = await supabaseClient.auth.signOut({ scope: 'local' });
         if (error) throw error;
         this.currentUser = null;
         this.userRole = null;
@@ -2141,6 +2162,11 @@
       // 获取当前用户ID
       getUserId() {
         return this.currentUser?.id;
+      }
+
+      // 获取当前用户邮箱
+      getUserEmail() {
+        return this.currentUser?.email;
       }
     }
 
@@ -2163,6 +2189,12 @@
       document.getElementById('loginPage').classList.remove('active');
       document.getElementById('registerPage').classList.remove('active');
       document.querySelector('.app-container').style.display = 'flex';
+
+      // 显示当前用户邮箱
+      const userEmail = authManager.getUserEmail();
+      if (userEmail) {
+        document.getElementById('currentUserEmail').textContent = userEmail;
+      }
     }
 
     function showError(elementId, message) {
@@ -2179,7 +2211,12 @@
     /* ========== 登出函数 ========== */
     async function handleLogout() {
       try {
+        // ✅ 清空前端缓存，防止下一个用户看到上一个用户的数据
+        reviewSystem.clearCache();
+
         await authManager.logout();
+        // ✅ 清除登录标记，下次启动需要手动登录
+        sessionStorage.removeItem('was_logged_in');
         showLoginPage();
         console.log('✅ 已退出登录');
       } catch (error) {
@@ -2220,9 +2257,17 @@
       }
 
       async addPage(name, sortOrder = 0) {
+        const userId = authManager.getUserId();
+        if (!userId) throw new Error('用户未登录');
+
         const { data, error } = await this.supabase
           .from(this.pagesTable)
-          .insert([{ name, sort_order: sortOrder, is_pinned: false }])
+          .insert([{
+            name,
+            sort_order: sortOrder,
+            is_pinned: false,
+            user_id: userId  // ✅ 设置 user_id
+          }])
           .select();
         if (error) throw error;
         return data?.[0];
@@ -2296,9 +2341,15 @@
       }
 
       async addItem(item) {
+        const userId = authManager.getUserId();
+        if (!userId) throw new Error('用户未登录');
+
         const dbItem = this.toDbFormat(item);
         // 不发送 id，让数据库自动生成
         delete dbItem.id;
+        // ✅ 设置 user_id
+        dbItem.user_id = userId;
+
         const { data, error } = await this.supabase
           .from(this.tableName)
           .insert([dbItem])
@@ -2693,6 +2744,27 @@
           this.updateStats();
           this.updateBellReminder();
         }
+      }
+
+      // ✅ 新增：清空前端缓存（用户切换时调用）
+      clearCache() {
+        this.reviewItems = [];
+        this.allReviewItems = [];
+        this.pages = [];
+        this.currentPageId = null;
+        this.slideState = {};
+        this.itemsByPage.clear();
+        this.pageStats.clear();
+        this.currentSearchQuery = '';
+
+        // 清空页面显示（安全检查）
+        const pageList = document.getElementById('pageList');
+        const reviewSections = document.getElementById('reviewSections');
+
+        if (pageList) pageList.innerHTML = '';
+        if (reviewSections) reviewSections.innerHTML = '';
+
+        console.log('✅ 已清空前端数据缓存');
       }
 
       // ========== 分页管理方法 ==========
@@ -4498,6 +4570,9 @@
 
         await authManager.login(email, password);
 
+        // ✅ 设置登录标记，允许刷新时自动恢复
+        sessionStorage.setItem('was_logged_in', 'true');
+
         // 登录成功，显示主应用
         showMainApp();
         await reviewSystem.init();
@@ -4548,6 +4623,9 @@
         registerBtn.textContent = '注册中...';
 
         await authManager.register(email, password);
+
+        // ✅ 设置登录标记，允许刷新时自动恢复
+        sessionStorage.setItem('was_logged_in', 'true');
 
         // 注册成功，显示主应用
         showMainApp();
@@ -4651,19 +4729,27 @@
     /* ========== 应用初始化 ========== */
     const reviewSystem = new EbbinghausReviewSystem();
 
-    // 启动时检查认证状态
+    // ✅ 修复：只在已经进入主应用后刷新才自动恢复登录状态
+    // 首次访问或退出后必须手动登录
     (async () => {
       const isAuthenticated = await authManager.checkAuth();
 
-      if (isAuthenticated) {
-        // 已登录，显示主应用
+      // 检查是否有"已登录"标记（用户手动登录后设置）
+      const wasLoggedIn = sessionStorage.getItem('was_logged_in');
+
+      if (isAuthenticated && wasLoggedIn === 'true') {
+        // 已登录且有登录标记，显示主应用
         showMainApp();
         await reviewSystem.init();
-        console.log('✅ 已登录，用户角色:', authManager.userRole);
+        console.log('✅ 自动恢复登录，用户:', authManager.getUserEmail(), '角色:', authManager.userRole);
       } else {
-        // 未登录，显示登录页面
+        // 未登录或没有登录标记，显示登录页面
+        // 清除可能残留的 session
+        if (isAuthenticated && wasLoggedIn !== 'true') {
+          await authManager.logout();
+        }
         showLoginPage();
-        console.log('未登录，显示登录页面');
+        console.log('显示登录页面，等待用户手动登录');
       }
     })();
 
